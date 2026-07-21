@@ -276,7 +276,7 @@ public final class MediaStoreGateway implements StorageGateway {
                         .append(MediaStore.MediaColumns.RELATIVE_PATH)
                         .append(" GLOB ?");
                 String root = MediaAllowlist.RELATIVE_ROOTS.get(index);
-                arguments.add(root);
+                arguments.add(root + "/");
                 arguments.add(root + "/*");
             }
             selection.append(") AND ").append(MediaStore.MediaColumns.IS_PENDING).append("=0");

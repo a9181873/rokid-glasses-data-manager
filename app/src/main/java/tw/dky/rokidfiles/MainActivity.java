@@ -84,7 +84,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     private static final int COLOR_TEXT = Color.rgb(184, 255, 184);
     private static final int COLOR_DIM = Color.rgb(104, 168, 104);
-    private static final int COLOR_FOCUS = Color.rgb(23, 61, 23);
+    private static final int COLOR_FOCUS = Color.rgb(30, 90, 30);
     private static final int COLOR_BORDER = Color.rgb(117, 255, 117);
 
     private enum Screen {
@@ -137,7 +137,9 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     private ViewFilter currentFilter = ViewFilter.ALL;
     private MediaItem activeItem;
     private VideoView activeVideo;
+    private boolean videoPausedByLifecycle;
     private Bitmap activeBitmap;
+    private AlertDialog activeDialog;
     private Future<?> activeTask;
     private final AtomicLong taskGeneration = new AtomicLong();
     private AtomicBoolean scanCancelled;
@@ -206,6 +208,24 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (activeVideo != null && activeVideo.isPlaying()) {
+            activeVideo.pause();
+            videoPausedByLifecycle = true;
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (activeVideo != null && videoPausedByLifecycle) {
+            activeVideo.start();
+            videoPausedByLifecycle = false;
+        }
+    }
+
+    @Override
     protected void onStop() {
         unregisterShareRemoteListener();
         mainHandler.removeCallbacks(shareStatusPoll);
@@ -215,6 +235,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     @Override
     protected void onDestroy() {
+        dismissActiveDialog();
         cancelActiveTask();
         releasePreviewMedia();
         mainHandler.removeCallbacksAndMessages(null);
@@ -781,7 +802,8 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             toast("請先解除保護");
             return;
         }
-        new AlertDialog.Builder(this)
+        dismissActiveDialog();
+        activeDialog = new AlertDialog.Builder(this)
                 .setTitle("移到垃圾桶？")
                 .setMessage(item.getDisplayName() + "\n可稍後還原，不會永久刪除。")
                 .setNegativeButton("取消", null)
@@ -823,7 +845,8 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         boolean charging = isCharging();
         if (!charging) {
-            new AlertDialog.Builder(this)
+            dismissActiveDialog();
+            activeDialog = new AlertDialog.Builder(this)
                     .setTitle("目前未充電")
                     .setMessage("重複檔掃描會讀取大型影片，可能增加耗電與溫度。仍要開始嗎？")
                     .setNegativeButton("稍後", null)
@@ -1244,7 +1267,15 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         hideProgressOverlay();
     }
 
+    private void dismissActiveDialog() {
+        if (activeDialog != null && activeDialog.isShowing()) {
+            activeDialog.dismiss();
+        }
+        activeDialog = null;
+    }
+
     private void releasePreviewMedia() {
+        videoPausedByLifecycle = false;
         if (activeVideo != null) {
             activeVideo.stopPlayback();
             activeVideo = null;

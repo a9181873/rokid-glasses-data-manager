@@ -301,8 +301,8 @@ public final class ShareService extends Service implements LocalShareServer.List
         int first = raw[0] & 0xff;
         int second = raw[1] & 0xff;
         return first == 10
-                || first == 172 && second >= 16 && second <= 31
-                || first == 192 && second == 168;
+                || (first == 172 && second >= 16 && second <= 31)
+                || (first == 192 && second == 168);
     }
 
     private boolean dispatchRemoteCommand(RemoteCommandListener.Command command) {
