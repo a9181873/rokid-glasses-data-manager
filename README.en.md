@@ -4,9 +4,17 @@
 
 [![Android CI](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml/badge.svg)](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml)
 
+## Download the APK
+
+Regular users do not need the Android SDK or a local build. Download the app that can be installed directly on the glasses:
+
+**[Download GlassesFiles.apk](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
+
+After downloading, install it with Hi Rokid's Toolbox. If Toolbox is unavailable, use the ADB method below.
+
 Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome display. The app runs directly on the glasses and lets you manage the photos and videos stored on them from the glasses, a phone browser, or a computer. There is no need to synchronize the entire gallery to a phone first, and the app has no cloud service, account, advertising, or analytics.
 
-> “Glasses File Station” is the translated documentation name. The installed APK and current interface remain in Traditional Chinese, with the fixed launcher label `眼鏡檔案站`. This project provides one installable edition only. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
+> “Glasses File Station” is the translated documentation name. The installed APK and current interface remain in Traditional Chinese, with the fixed launcher label `眼鏡檔案站`. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
 
 ## Features
 
@@ -20,7 +28,7 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 
 ## Storage permission
 
-This project has only one edition, named “Glasses File Station.” On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback.
+On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback.
 
 ## Confirmed device characteristics
 
@@ -31,24 +39,28 @@ Rokid's currently published specifications for Rokid Glasses list binocular 480�
 - [Rokid Security Center (RV101/RV102)](https://global.rokid.com/en-jp/pages/security-center)
 - [Rokid Taiwan RV101 product page](https://www.rokid.com.tw/zh-TW/products/rokid-glasses)
 
-Rokid publicly identifies the operating system only as **YodaOS-Sprite**. Details such as Android 12/API 32, `arm64-v8a`, and low-RAM configuration currently come from [community firmware research](https://github.com/buildwithfenna/rokid-docs). The app therefore does not depend on Google Play Services or a private Rokid SDK and uses API 28 as its minimum supported version.
+Rokid publicly identifies the operating system only as **YodaOS-Sprite**. Details such as Android 12/API 32, `arm64-v8a`, and low-RAM configuration currently come from [community firmware research](https://github.com/buildwithfenna/rokid-docs). The app therefore does not depend on Google Play Services or a private Rokid SDK and supports Android API level 28 or later.
 
-## Build
+## Build from source (developers only)
 
-JDK 17, Android SDK Platform 35, and Android Build Tools are required. The project has no third-party runtime dependencies.
+Regular users should use the APK above and do not need an SDK. To modify the source code, follow these steps:
 
-```bash
-./gradlew :app:assembleDebug
-./gradlew test
+1. [Download and install Android Studio from the official Android website](https://developer.android.com/studio). Its setup wizard installs the Android SDK.
+2. Open **Tools → SDK Manager** and install **Android SDK Platform 35**, **Android SDK Build-Tools**, and **Android SDK Platform-Tools**.
+3. Open this project directory in Android Studio and wait for Gradle Sync to finish.
+4. Select **Build → Build App Bundle(s) or APK(s) → Build APK(s)**.
+5. Find the result at `app/build/outputs/apk/debug/app-debug.apk`.
+
+For a command-line-only setup, get the Android SDK Command-Line Tools from the [official download page](https://developer.android.com/studio#command-tools) and install JDK 17. Then run these commands from the project root:
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat test
 ```
 
-The development Debug APK is written to:
+On macOS/Linux, replace `gradlew.bat` with `./gradlew`.
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-The installable, release-signed build delivered with this project is located at:
+The repository's release-signed APK is located at:
 
 ```text
 dist/GlassesFiles.apk
@@ -59,7 +71,7 @@ The maintainer's local `private-signing/` directory contains the private key req
 
 ## Install
 
-Recent versions of Hi Rokid include a Toolbox that can install a local APK and remotely control the glasses. Update both Hi Rokid and YodaOS-Sprite before proceeding. If Toolbox is unavailable, obtain a Rokid debugging cable with data contacts and enable ADB:
+Hi Rokid's Toolbox can install a local APK and remotely control the glasses. Apply available system updates to Hi Rokid and YodaOS-Sprite before proceeding. If Toolbox is unavailable, obtain a Rokid debugging cable with data contacts and enable ADB:
 
 ```bash
 adb devices -l
