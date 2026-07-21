@@ -92,7 +92,7 @@ public final class LocalShareServerTest {
 
         assertEquals(200, response.status);
         assertEquals("text/html; charset=utf-8", response.header("content-type"));
-        assertTrue(response.bodyUtf8().contains("<title>眼鏡檔案站</title>"));
+        assertTrue(response.bodyUtf8().contains("<title>Rokid眼鏡檔案管理APP</title>"));
         assertEquals("DENY", response.header("x-frame-options"));
     }
 

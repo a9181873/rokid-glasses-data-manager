@@ -387,7 +387,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         screen = Screen.HOME;
         activeItem = null;
         activeVideo = null;
-        titleView.setText("眼鏡檔案站");
+        titleView.setText("Rokid眼鏡檔案管理APP");
         subtitleView.setText(homeSubtitle());
         List<UiRow> home = new ArrayList<>();
 

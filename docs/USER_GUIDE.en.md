@@ -1,4 +1,4 @@
-# Glasses File Station（眼鏡檔案站） User Guide
+# Rokid Glasses File Manager App（Rokid眼鏡檔案管理APP） User Guide
 
 [繁體中文](USER_GUIDE.md) | English | [日本語](USER_GUIDE.ja.md)
 
@@ -14,7 +14,7 @@ The current APK and browser interface are in Traditional Chinese. The English te
 
 | Meaning | Label shown in the app |
 |---|---|
-| App launcher | `眼鏡檔案站` |
+| App launcher | `Rokid眼鏡檔案管理APP` |
 | Allow file management | `允許檔案管理` |
 | USB computer management | `USB 電腦管理` |
 | Wi-Fi phone management | `Wi‑Fi 手機管理` |
@@ -29,7 +29,7 @@ The current APK and browser interface are in Traditional Chinese. The English te
 1. Update Hi Rokid and YodaOS-Sprite on the glasses.
 2. Open Toolbox in Hi Rokid.
 3. Select the delivered `GlassesFiles.apk` and install it on the glasses.
-4. Put on the glasses and look for `眼鏡檔案站` near the end of the app list.
+4. Put on the glasses and look for `Rokid眼鏡檔案管理APP` near the end of the app list.
 
 The Hi Rokid interface can vary slightly by market. If Toolbox is unavailable, use Method B.
 
@@ -51,7 +51,7 @@ adb install -r GlassesFiles.apk
 
 ## Initial permission
 
-1. Open `眼鏡檔案站`.
+1. Open `Rokid眼鏡檔案管理APP`.
 2. Select `允許檔案管理` (Allow file management).
 3. On the Android settings screen, allow “All files access.”
 4. Return to the app. The permission is retained and does not need to be granted on every launch.

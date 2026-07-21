@@ -34,7 +34,7 @@ adb shell content query --uri content://media/external/video/media --projection 
 
 判定：
 
-- 相機檔案位於共享儲存：安裝單一版本，並在 App 內允許「所有檔案存取」。
+- 相機檔案位於共享儲存：安裝 App，並允許「所有檔案存取」。
 - 未完成特殊權限時只應進入 MediaStore 唯讀備援，不得假裝異動成功。
 - 相機檔案只在原廠 App 私人目錄：普通第三方 APK 無法安全存取，需向 Rokid 取得官方媒體 API／簽章權限。
 

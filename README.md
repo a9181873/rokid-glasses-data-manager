@@ -1,4 +1,4 @@
-# 眼鏡檔案站（Rokid Local Files）
+# Rokid眼鏡檔案管理APP
 
 繁體中文｜[English](README.en.md)｜[日本語](README.ja.md)
 
@@ -14,7 +14,7 @@
 
 專為綠色單色顯示的消費版 **Rokid Glasses RV101／RV102** 設計。App 直接在眼鏡上執行，讓眼鏡、手機瀏覽器或電腦管理眼鏡內的相片與影片；不需先把整個相簿同步到手機，也沒有雲端、帳號、廣告或分析服務。
 
-> App 安裝後的名稱固定為「眼鏡檔案站」。Rokid 並未把消費版 YodaOS 的所有 Android 行為列為公開契約；正式使用前必須依 [真機驗收清單](docs/DEVICE_CHECK.md) 測試檔案路徑、儲存授權與觸控板事件。
+> App 安裝後的名稱固定為「Rokid眼鏡檔案管理APP」。Rokid 並未把消費版 YodaOS 的所有 Android 行為列為公開契約；正式使用前必須依 [真機驗收清單](docs/DEVICE_CHECK.md) 測試檔案路徑、儲存授權與觸控板事件。
 
 ## 功能
 
@@ -65,13 +65,15 @@ macOS／Linux 請將 `gradlew.bat` 改為 `./gradlew`。
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256：`9150e6856995862df1c279783ec6e5844f8ffb33b653f1bf2c9e398647d14cb0`。簽署憑證指紋：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+SHA-256：`f73678a7035bbee60b5b9ee059ed08f9f1941d08a2c308879352fd851ee72a1c`。簽署憑證指紋：`4474b01e8e0fd74d484775e223344ca7703c779719d6a634621cce0d782fd9d8`。
 
 維護者本機的 `private-signing/` 是後續覆蓋更新必須使用的私密簽章金鑰；它已由 `.gitignore` 排除，不會推送到 GitHub。請離線備份且不要公開。
 
 ## 安裝
 
 Hi Rokid 的 Toolbox 可安裝本機 APK，並以手機遙控眼鏡。操作前請先完成 Hi Rokid 與 YodaOS-Sprite 的系統更新。若 Toolbox 不可用，需另購具資料接點的 Rokid 除錯線並開啟 ADB：
+
+若眼鏡曾安裝使用其他簽章的 APK，請先解除安裝再安裝此檔案；解除安裝會清除該 App 的本機資料。
 
 ```bash
 adb devices -l
@@ -84,7 +86,7 @@ adb install -r dist/GlassesFiles.apk
 
 ### USB 電腦管理（推薦）
 
-1. 在眼鏡開啟「眼鏡檔案站」→「USB 電腦管理」。
+1. 在眼鏡開啟「Rokid眼鏡檔案管理APP」→「USB 電腦管理」。
 2. 以除錯線連接電腦後執行：
 
 ```bash

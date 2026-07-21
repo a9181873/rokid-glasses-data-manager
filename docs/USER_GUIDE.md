@@ -1,4 +1,4 @@
-# 眼鏡檔案站使用說明
+# Rokid眼鏡檔案管理APP使用說明
 
 繁體中文｜[English](USER_GUIDE.en.md)｜[日本語](USER_GUIDE.ja.md)
 
@@ -15,7 +15,7 @@
 1. 更新 Hi Rokid 與眼鏡 YodaOS-Sprite。
 2. 在 Hi Rokid 開啟 Toolbox。
 3. 選擇交付的 `GlassesFiles.apk` 並安裝到眼鏡。
-4. 戴上眼鏡，在 App 清單末端尋找「眼鏡檔案站」。
+4. 戴上眼鏡，在 App 清單末端尋找「Rokid眼鏡檔案管理APP」。
 
 不同地區的 Hi Rokid 介面可能略有差異。若沒有 Toolbox，使用方法 B。
 
@@ -37,7 +37,7 @@ adb install -r GlassesFiles.apk
 
 ## 首次授權
 
-1. 開啟「眼鏡檔案站」。
+1. 開啟「Rokid眼鏡檔案管理APP」。
 2. 選「允許檔案管理」。
 3. 在 Android 設定頁允許「所有檔案存取」。
 4. 返回 App。授權會保留，不必每次重做。

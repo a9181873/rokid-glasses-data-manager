@@ -1,4 +1,4 @@
-# Glasses File Station（眼鏡檔案站）
+# Rokid Glasses File Manager App（Rokid眼鏡檔案管理APP）
 
 [繁體中文](README.md) | English | [日本語](README.ja.md)
 
@@ -14,7 +14,7 @@ After downloading, install it with Hi Rokid's Toolbox. If Toolbox is unavailable
 
 Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome display. The app runs directly on the glasses and lets you manage the photos and videos stored on them from the glasses, a phone browser, or a computer. There is no need to synchronize the entire gallery to a phone first, and the app has no cloud service, account, advertising, or analytics.
 
-> “Glasses File Station” is the translated documentation name. The installed APK and current interface remain in Traditional Chinese, with the fixed launcher label `眼鏡檔案站`. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
+> “Rokid Glasses File Manager App” is the translated documentation name. The installed APK and current interface remain in Traditional Chinese, with the fixed launcher label `Rokid眼鏡檔案管理APP`. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
 
 ## Features
 
@@ -65,7 +65,7 @@ The repository's release-signed APK is located at:
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256: `9150e6856995862df1c279783ec6e5844f8ffb33b653f1bf2c9e398647d14cb0`. Signing certificate fingerprint: `b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`.
+SHA-256: `f73678a7035bbee60b5b9ee059ed08f9f1941d08a2c308879352fd851ee72a1c`. Signing certificate fingerprint: `4474b01e8e0fd74d484775e223344ca7703c779719d6a634621cce0d782fd9d8`.
 
 The maintainer's local `private-signing/` directory contains the private key required for future in-place updates. It is excluded by `.gitignore` and is never pushed to GitHub. Keep an offline backup and never publish it.
 
@@ -73,18 +73,20 @@ The maintainer's local `private-signing/` directory contains the private key req
 
 Hi Rokid's Toolbox can install a local APK and remotely control the glasses. Apply available system updates to Hi Rokid and YodaOS-Sprite before proceeding. If Toolbox is unavailable, obtain a Rokid debugging cable with data contacts and enable ADB:
 
+If the glasses already have an APK signed with another key, uninstall it before installing this file. Uninstalling clears that app's local data.
+
 ```bash
 adb devices -l
 adb install -r dist/GlassesFiles.apk
 ```
 
-The magnetic charging cable included in the box might not carry data. After installation, look for the fixed launcher label `眼鏡檔案站`, usually near the end of the app list on the glasses; the exact behavior depends on the device firmware.
+The magnetic charging cable included in the box might not carry data. After installation, look for the fixed launcher label `Rokid眼鏡檔案管理APP`, usually near the end of the app list on the glasses; the exact behavior depends on the device firmware.
 
 ## Use
 
 ### USB computer management (recommended)
 
-1. On the glasses, open `眼鏡檔案站` → `USB 電腦管理` (USB computer management).
+1. On the glasses, open `Rokid眼鏡檔案管理APP` → `USB 電腦管理` (USB computer management).
 2. Connect the debugging cable to the computer and run:
 
 ```bash

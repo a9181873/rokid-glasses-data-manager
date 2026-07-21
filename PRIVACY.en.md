@@ -2,7 +2,7 @@
 
 [繁體中文](PRIVACY.md) | English | [日本語](PRIVACY.ja.md)
 
-Glasses File Station（眼鏡檔案站） uses an offline, local-first design.
+Rokid Glasses File Manager App（Rokid眼鏡檔案管理APP） uses an offline, local-first design.
 
 ## What the app does not do
 

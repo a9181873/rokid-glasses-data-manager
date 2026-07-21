@@ -425,7 +425,7 @@ public final class ShareService extends Service implements LocalShareServer.List
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(preparing ? "眼鏡檔案站準備分享" : "眼鏡檔案站分享中")
+                .setContentTitle(preparing ? "Rokid眼鏡檔案管理APP準備分享" : "Rokid眼鏡檔案管理APP分享中")
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
                 .setCategory(Notification.CATEGORY_SERVICE)

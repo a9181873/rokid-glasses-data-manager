@@ -11,7 +11,7 @@ final class WebAssets {
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
               <meta name="color-scheme" content="dark">
-              <title>眼鏡檔案站</title>
+              <title>Rokid眼鏡檔案管理APP</title>
               <link rel="stylesheet" href="/app.css">
               <script src="/app.js" defer></script>
             </head>
@@ -19,7 +19,7 @@ final class WebAssets {
               <header class="topbar">
                 <div>
                   <p class="eyebrow">ROKID GLASSES</p>
-                  <h1>眼鏡檔案站</h1>
+                  <h1>Rokid眼鏡檔案管理APP</h1>
                 </div>
                 <span class="local-badge">只在本機</span>
               </header>

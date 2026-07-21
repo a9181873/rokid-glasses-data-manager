@@ -2,7 +2,7 @@
 
 繁體中文｜[English](PRIVACY.en.md)｜[日本語](PRIVACY.ja.md)
 
-眼鏡檔案站採離線、本機優先設計。
+Rokid眼鏡檔案管理APP採離線、本機優先設計。
 
 ## App 不會做的事
 
