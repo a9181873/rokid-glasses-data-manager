@@ -1,0 +1,1 @@
+Improved thumbnail loading for 12MP photos. Wi-Fi pairing UI refinements. Storage capacity display. Japanese UI translation.
