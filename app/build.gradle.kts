@@ -10,10 +10,10 @@ android {
         applicationId = "tw.dky.rokidfiles"
         minSdk = 28
         targetSdk = 32
-        versionCode = 2
+        versionCode = 3
         versionName = "1.1.0"
 
-        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {

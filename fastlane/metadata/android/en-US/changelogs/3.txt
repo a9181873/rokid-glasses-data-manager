@@ -1,0 +1,1 @@
+Added offline QR sharing and keep-awake phone control. Refreshed the mobile interface with softer colors, made the glasses menu more compact, and filtered duplicate or unreadable MediaStore rows.

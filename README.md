@@ -1,8 +1,16 @@
-# 眼鏡檔案站（Rokid Local Files）
+# Rokid眼鏡檔案管理APP
 
 繁體中文｜[English](README.en.md)｜[日本語](README.ja.md)
 
 [![Android CI](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml/badge.svg)](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml)
+
+## 直接下載 APK
+
+一般使用者不需要 Android SDK，也不需要自行建置。請直接下載可安裝到眼鏡的 App：
+
+**[下載 GlassesFiles.apk](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
+
+下載後可使用 Hi Rokid 的 Toolbox 安裝；若 Toolbox 無法使用，請參考下方的 ADB 安裝方式。
 
 專為綠色單色顯示的消費版 **Rokid Glasses RV101／RV102** 設計。App 直接在眼鏡上執行，讓眼鏡、手機瀏覽器或電腦管理眼鏡內的相片與影片；不需先把整個相簿同步到手機，也沒有雲端、帳號、廣告或分析服務。
 
@@ -33,35 +41,41 @@
 - [Rokid Security Center（RV101／RV102）](https://global.rokid.com/en-jp/pages/security-center)
 - [台灣 Rokid RV101 產品頁](https://www.rokid.com.tw/zh-TW/products/rokid-glasses)
 
-官方只公開作業系統名稱 **YodaOS-Sprite**。Android 12／API 32、arm64-v8a 與 low-RAM 等細節目前來自[社群韌體研究](https://github.com/buildwithfenna/rokid-docs)，因此 App 不依賴 Google Play Services 或 Rokid 私有 SDK，並把 API 28 設為最低相容版本。
+官方只公開作業系統名稱 **YodaOS-Sprite**。Android 12／API 32、arm64-v8a 與 low-RAM 等細節目前來自[社群韌體研究](https://github.com/buildwithfenna/rokid-docs)，因此 App 不依賴 Google Play Services 或 Rokid 私有 SDK，並支援 API 28 以上的 Android 環境。
 
-## 建置
+## 自行建置（僅供開發者）
 
-需要 JDK 17、Android SDK Platform 35 及 Android Build Tools。專案沒有第三方執行期依賴。
+一般使用者請直接使用上方的 APK，不需要安裝 SDK。若要修改程式碼，請依下列步驟建置：
 
-```bash
-./gradlew :app:assembleDebug
-./gradlew test
+1. 從 [Android 官方網站下載並安裝 Android Studio](https://developer.android.com/studio)。安裝精靈會一併設定 Android SDK。
+2. 開啟 **Tools → SDK Manager**，安裝 **Android SDK Platform 35**、**Android SDK Build-Tools** 與 **Android SDK Platform-Tools**。
+3. 用 Android Studio 開啟本專案資料夾，等待 Gradle Sync 完成。
+4. 選擇 **Build → Build App Bundle(s) or APK(s) → Build APK(s)**。
+5. 到 `app/build/outputs/apk/debug/app-debug.apk` 取得建置結果。
+
+命令列使用者可從[官方下載頁](https://developer.android.com/studio#command-tools)取得 Android SDK Command-Line Tools，並準備 JDK 17。完成環境設定後，在專案根目錄執行：
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat test
 ```
 
-開發用 Debug APK 輸出位於：
+macOS／Linux 請將 `gradlew.bat` 改為 `./gradlew`。
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-本次可安裝的正式簽署版本位於：
+儲存庫附帶的正式簽署 APK 位於：
 
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256：`f02defc45c6b25d759b6c6e8323a02a524f762319b032a9f4625b8192e596594`。簽署憑證指紋：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+SHA-256：`871c069afc572f0d68d8dc4b087b48ce5252aa51c3183fbf175c23e6d1973b58`。簽署憑證指紋：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
 
 維護者本機的 `private-signing/` 是後續覆蓋更新必須使用的私密簽章金鑰；它已由 `.gitignore` 排除，不會推送到 GitHub。請離線備份且不要公開。
 
 ## 安裝
 
-較新的 Hi Rokid 已提供 Toolbox，可安裝本機 APK與以手機遙控眼鏡；先將 Hi Rokid 與 YodaOS-Sprite 更新到最新版。若 Toolbox 不可用，需另購具資料接點的 Rokid 除錯線並開啟 ADB：
+Hi Rokid 的 Toolbox 可安裝本機 APK，並以手機遙控眼鏡。操作前請先完成 Hi Rokid 與 YodaOS-Sprite 的系統更新。若 Toolbox 不可用，需另購具資料接點的 Rokid 除錯線並開啟 ADB：
+
+若眼鏡曾安裝使用其他簽章的 APK，請先解除安裝再安裝此檔案；解除安裝會清除該 App 的本機資料。
 
 ```bash
 adb devices -l
@@ -74,7 +88,7 @@ adb install -r dist/GlassesFiles.apk
 
 ### USB 電腦管理（推薦）
 
-1. 在眼鏡開啟「眼鏡檔案站」→「USB 電腦管理」。
+1. 在眼鏡開啟「Rokid眼鏡檔案管理APP」→「USB 電腦管理」。
 2. 以除錯線連接電腦後執行：
 
 ```bash

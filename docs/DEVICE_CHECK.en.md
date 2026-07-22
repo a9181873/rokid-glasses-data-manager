@@ -34,7 +34,7 @@ adb shell content query --uri content://media/external/video/media --projection 
 
 Interpretation:
 
-- Camera files are in shared storage: install the single edition and grant “All files access” in the app.
+- Camera files are in shared storage: install the app and grant “All files access.”
 - Until the special permission has been granted, the app must use its read-only MediaStore fallback and must never report a file modification as successful.
 - Camera files exist only in the stock app's private directory: an ordinary third-party APK cannot access them safely. An official Rokid media API or signing permission is required.
 

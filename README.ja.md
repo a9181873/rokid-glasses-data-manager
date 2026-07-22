@@ -1,8 +1,16 @@
-# 眼鏡ファイルステーション（中国語名：眼鏡檔案站）
+# Rokid 眼鏡ファイル管理アプリ（中国語名：Rokid眼鏡檔案管理APP）
 
 [繁體中文](README.md)｜[English](README.en.md)｜日本語
 
 [![Android CI](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml/badge.svg)](https://github.com/a9181873/rokid-glasses-data-manager/actions/workflows/android.yml)
+
+## APK をダウンロード
+
+通常の利用では Android SDK もローカルビルドも不要です。眼鏡へ直接インストールできるアプリをダウンロードしてください。
+
+**[GlassesFiles.apk をダウンロード](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
+
+ダウンロード後、Hi Rokid の Toolbox でインストールできます。Toolbox を使用できない場合は、下記の ADB 手順を使用してください。
 
 緑色モノクロ表示を採用する一般消費者向け **Rokid Glasses RV101／RV102** 専用に設計されています。アプリは眼鏡上で直接動作し、眼鏡本体、スマートフォンのブラウザ、またはパソコンから、眼鏡内の写真と動画を管理できます。アルバム全体をあらかじめスマートフォンへ同期する必要はなく、クラウド、アカウント、広告、アクセス解析サービスも使用しません。
 
@@ -33,48 +41,54 @@
 - [Rokid Security Center（RV101／RV102）](https://global.rokid.com/en-jp/pages/security-center)
 - [台湾 Rokid RV101 製品ページ](https://www.rokid.com.tw/zh-TW/products/rokid-glasses)
 
-公式に公開されている OS 名は **YodaOS-Sprite** だけです。Android 12／API 32、arm64-v8a、low-RAM などの詳細は、現時点では[コミュニティによるファームウェア調査](https://github.com/buildwithfenna/rokid-docs)に基づきます。そのため、本アプリは Google Play Services や Rokid の非公開 SDK に依存せず、API 28 を最小互換バージョンに設定しています。
+公式に公開されている OS 名は **YodaOS-Sprite** だけです。Android 12／API 32、arm64-v8a、low-RAM などの詳細は、現時点では[コミュニティによるファームウェア調査](https://github.com/buildwithfenna/rokid-docs)に基づきます。そのため、本アプリは Google Play Services や Rokid の非公開 SDK に依存せず、Android API レベル 28 以降に対応します。
 
-## ビルド
+## ソースからビルド（開発者向け）
 
-JDK 17、Android SDK Platform 35、Android Build Tools が必要です。プロジェクトにサードパーティ製のランタイム依存関係はありません。
+通常の利用では上記の APK を使用してください。SDK のインストールは不要です。ソースコードを変更する場合は、次の手順でビルドします。
 
-```bash
-./gradlew :app:assembleDebug
-./gradlew test
+1. [Android 公式サイトから Android Studio をダウンロードしてインストール](https://developer.android.com/studio)します。Setup Wizard が Android SDK も設定します。
+2. **Tools → SDK Manager** を開き、**Android SDK Platform 35**、**Android SDK Build-Tools**、**Android SDK Platform-Tools** をインストールします。
+3. Android Studio で本プロジェクトのフォルダーを開き、Gradle Sync の完了を待ちます。
+4. **Build → Build App Bundle(s) or APK(s) → Build APK(s)** を選択します。
+5. `app/build/outputs/apk/debug/app-debug.apk` からビルド結果を取得します。
+
+コマンドラインだけを使用する場合は、[公式ダウンロードページ](https://developer.android.com/studio#command-tools)から Android SDK Command-Line Tools を取得し、JDK 17 も用意してください。環境設定後、プロジェクトのルートで次を実行します。
+
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat test
 ```
 
-開発用 Debug APK の出力先：
+macOS／Linux では `gradlew.bat` を `./gradlew` に置き換えてください。
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-今回提供する正式署名済みバージョン：
+リポジトリに含まれる正式署名済み APK：
 
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256：`f02defc45c6b25d759b6c6e8323a02a524f762319b032a9f4625b8192e596594`。署名証明書フィンガープリント：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+SHA-256：`871c069afc572f0d68d8dc4b087b48ce5252aa51c3183fbf175c23e6d1973b58`。署名証明書フィンガープリント：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
 
 メンテナーのローカル環境にある `private-signing/` には、今後の上書き更新に必須となる秘密署名鍵があります。このフォルダは `.gitignore` で除外され、GitHub へは送信されません。オフラインでバックアップし、公開しないでください。
 
 ## インストール
 
-新しいバージョンの Hi Rokid には、ローカル APK のインストールとスマートフォンからの眼鏡操作に対応する Toolbox が用意されています。最初に Hi Rokid と YodaOS-Sprite を最新版へ更新してください。Toolbox を使用できない場合は、データ端子を備えた Rokid デバッグケーブルを別途用意し、ADB を有効にする必要があります。
+Hi Rokid の Toolbox は、ローカル APK のインストールとスマートフォンからの眼鏡操作に対応します。操作前に Hi Rokid と YodaOS-Sprite のシステム更新を完了してください。Toolbox を使用できない場合は、データ端子を備えた Rokid デバッグケーブルを別途用意し、ADB を有効にする必要があります。
+
+別の鍵で署名された APK が眼鏡にインストール済みの場合は、先にアンインストールしてからこのファイルをインストールしてください。アンインストールすると、そのアプリのローカルデータは消去されます。
 
 ```bash
 adb devices -l
 adb install -r dist/GlassesFiles.apk
 ```
 
-同梱の磁気充電ケーブルは、データ通信に対応していない場合があります。インストール後は `眼鏡檔案站` を探してください。通常は眼鏡のアプリ一覧の末尾に表示されますが、この動作は実機のファームウェアによって異なる可能性があります。
+同梱の磁気充電ケーブルは、データ通信に対応していない場合があります。インストール後は `Rokid眼鏡檔案管理APP` を探してください。通常は眼鏡のアプリ一覧の末尾に表示されますが、この動作は実機のファームウェアによって異なる可能性があります。
 
 ## 使い方
 
 ### USB でパソコンから管理（推奨）
 
-1. 眼鏡で `眼鏡檔案站` → `USB 電腦管理`（USB パソコン管理）を開きます。
+1. 眼鏡で `Rokid眼鏡檔案管理APP` → `USB 電腦管理`（USB パソコン管理）を開きます。
 2. デバッグケーブルでパソコンへ接続し、次を実行します。
 
 ```bash

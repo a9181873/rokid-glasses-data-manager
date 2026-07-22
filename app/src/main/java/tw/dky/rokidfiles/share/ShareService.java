@@ -295,8 +295,8 @@ public final class ShareService extends Service implements LocalShareServer.List
         int first = raw[0] & 0xff;
         int second = raw[1] & 0xff;
         return first == 10
-                || first == 172 && second >= 16 && second <= 31
-                || first == 192 && second == 168;
+                || (first == 172 && second >= 16 && second <= 31)
+                || (first == 192 && second == 168);
     }
 
     private boolean dispatchRemoteCommand(RemoteCommandListener.Command command) {
@@ -430,7 +430,7 @@ public final class ShareService extends Service implements LocalShareServer.List
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder builder = new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(preparing ? "眼鏡檔案站準備分享" : "眼鏡檔案站分享中")
+                .setContentTitle(preparing ? "Rokid眼鏡檔案管理APP準備分享" : "Rokid眼鏡檔案管理APP分享中")
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
                 .setCategory(Notification.CATEGORY_SERVICE)
