@@ -11,7 +11,7 @@
 - Mutating operations require a same-origin session cookie and custom CSRF header. Responses use CSP, `frame-ancestors 'none'`, `nosniff`, and `no-store`.
 - An upload is fully written to a temporary file and `fsync`ed before it is moved to its final name, without replacing an existing same-name file. Delete actions move items to trash by default.
 - The app does not request camera, microphone, location, contacts, advertising ID, or launch-at-boot permission, and it does not connect to any external host.
-- QR codes are encoded entirely on the glasses without an external QR service. The screen wake lock is held only during sharing and is released when sharing stops or times out.
+- The screen wake lock is held only during sharing and is released when sharing stops or times out.
 
 ## HTTP limitation
 

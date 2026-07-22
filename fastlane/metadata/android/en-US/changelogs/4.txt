@@ -1,0 +1,1 @@
+Removed the confusing QR code screen. Wi-Fi sharing now uses the URL and pairing code shown directly on the glasses.

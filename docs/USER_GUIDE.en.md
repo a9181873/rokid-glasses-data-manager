@@ -96,10 +96,10 @@ Select “Protect” on a file's action page. A protected item cannot be renamed
 1. Turn on your phone's personal hotspot.
 2. Connect the glasses to that hotspot.
 3. Select “Wi-Fi phone management” on the home screen of the glasses.
-4. Scan the offline QR code shown on the glasses with the phone camera. If the camera cannot recognize it, enter an address such as `http://192.168.43.20:8765` manually.
+4. Enter the address shown on the glasses directly in the phone browser, for example `http://192.168.43.20:8765`.
 5. Enter the current six-digit pairing code.
 
-The glasses display stays awake while sharing and phone control are active so that remote actions remain visible. Normal sleep behavior resumes when sharing stops or after the 10-minute inactivity timeout. The QR code is generated locally on the glasses; its URL is never sent to an external service.
+The glasses display stays awake while sharing and phone control are active so that remote actions remain visible. Normal sleep behavior resumes when sharing stops or after the 10-minute inactivity timeout.
 
 After pairing, you can:
 

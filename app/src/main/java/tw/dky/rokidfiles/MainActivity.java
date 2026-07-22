@@ -1070,7 +1070,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             subtitleView.setText("PIN " + pin + "  •  " + url);
             if (shareWifi) {
                 shareRows.add(actionRow("手機開啟", url,
-                        () -> toast("用手機相機掃描 QR Code，或輸入網址")));
+                        () -> toast("請在手機瀏覽器輸入上方網址")));
                 shareRows.add(headerRow("限個人熱點／可信 Wi‑Fi；HTTP 不會加密內容"));
             } else {
                 shareRows.add(actionRow("電腦終端機", "adb forward tcp:8765 tcp:8765",
@@ -1081,11 +1081,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         shareRows.add(actionRow("停止分享", "立即中斷並銷毀 PIN", this::stopShareService));
         shareRows.add(actionRow("返回首頁", "分享會繼續，10 分鐘閒置後自停", this::showHome));
-        if (shareWifi && url != null && pin != null && running) {
-            showRowsWithQr(shareRows, url);
-        } else {
-            showRows(shareRows);
-        }
+        showRows(shareRows);
     }
 
     private void stopShareService() {
@@ -1109,58 +1105,6 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         } else {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         }
-    }
-
-    private void showRowsWithQr(List<UiRow> newRows, String url) {
-        showRows(newRows);
-        ListView shareList = listView;
-        content.removeView(shareList);
-
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        ImageView qrView = new ImageView(this);
-        qrView.setContentDescription("手機掃描分享網址 QR Code");
-        qrView.setImageBitmap(createQrBitmap(url, dp(190)));
-        qrView.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(dp(190), dp(190));
-        qrParams.bottomMargin = dp(6);
-        container.addView(qrView, qrParams);
-
-        TextView hint = text(13, COLOR_DIM, Typeface.BOLD);
-        hint.setText("手機相機掃描 QR Code，再輸入上方 PIN");
-        hint.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        hintParams.bottomMargin = dp(4);
-        container.addView(hint, hintParams);
-        container.addView(shareList, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        content.addView(container, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        shareList.requestFocus();
-    }
-
-    private static Bitmap createQrBitmap(String text, int requestedPixels) {
-        QrCode code = QrCode.encodeText(text);
-        int quietZone = 4;
-        int units = QrCode.SIZE + quietZone * 2;
-        int scale = Math.max(1, requestedPixels / units);
-        int pixels = units * scale;
-        Bitmap bitmap = Bitmap.createBitmap(pixels, pixels, Bitmap.Config.ARGB_8888);
-        bitmap.eraseColor(Color.WHITE);
-        for (int y = 0; y < QrCode.SIZE; y++) {
-            for (int x = 0; x < QrCode.SIZE; x++) {
-                if (!code.get(x, y)) continue;
-                int left = (x + quietZone) * scale;
-                int top = (y + quietZone) * scale;
-                for (int py = top; py < top + scale; py++) {
-                    for (int px = left; px < left + scale; px++) bitmap.setPixel(px, py, Color.BLACK);
-                }
-            }
-        }
-        return bitmap;
     }
 
     private void returnToMedia() {
