@@ -65,6 +65,7 @@ import tw.dky.rokidfiles.storage.CancellationToken;
 import tw.dky.rokidfiles.storage.DuplicateScanner;
 import tw.dky.rokidfiles.storage.ManagedStorageGateway;
 import tw.dky.rokidfiles.storage.MediaItem;
+import tw.dky.rokidfiles.storage.MediaIdentity;
 import tw.dky.rokidfiles.storage.MediaPage;
 import tw.dky.rokidfiles.storage.MediaQuery;
 import tw.dky.rokidfiles.storage.StorageCapacity;
@@ -170,6 +171,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         public void onServiceDisconnected(ComponentName name) {
             shareBinder = null;
             shareBindRequested = false;
+            setShareScreenAwake(false);
             mainHandler.removeCallbacks(shareStatusPoll);
             if (screen == Screen.SHARE) {
                 shareRequested = false;
@@ -215,6 +217,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     @Override
     protected void onDestroy() {
+        setShareScreenAwake(false);
         cancelActiveTask();
         releasePreviewMedia();
         mainHandler.removeCallbacksAndMessages(null);
@@ -498,6 +501,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         List<MediaItem> result = new ArrayList<>();
         ArrayDeque<String> pending = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
+        Set<String> visitedFiles = new HashSet<>();
         pending.add("<root>");
         visited.add("<root>");
         while (!pending.isEmpty() && result.size() < MAX_MEDIA_ITEMS) {
@@ -512,7 +516,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
                         if (visited.add(item.getId())) {
                             pending.addLast(item.getId());
                         }
-                    } else {
+                    } else if (visitedFiles.add(MediaIdentity.logicalKey(item))) {
                         result.add(item);
                     }
                 }
@@ -949,6 +953,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     private void startShareService(boolean wifi) {
         shareRequested = true;
+        setShareScreenAwake(true);
         shareWifi = wifi;
         sharePollAttempts = 0;
         renderedShareKey = null;
@@ -964,6 +969,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             mainHandler.postDelayed(shareStatusPoll, 250L);
         } catch (RuntimeException failure) {
             shareRequested = false;
+            setShareScreenAwake(false);
             toast("分享啟動失敗：" + safeMessage(failure));
             showHome();
         }
@@ -1041,7 +1047,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             subtitleView.setText("PIN " + pin + "  •  " + url);
             if (shareWifi) {
                 shareRows.add(actionRow("手機開啟", url,
-                        () -> toast("請在手機瀏覽器輸入上方網址")));
+                        () -> toast("用手機相機掃描 QR Code，或輸入網址")));
                 shareRows.add(headerRow("限個人熱點／可信 Wi‑Fi；HTTP 不會加密內容"));
             } else {
                 shareRows.add(actionRow("電腦終端機", "adb forward tcp:8765 tcp:8765",
@@ -1052,11 +1058,16 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         shareRows.add(actionRow("停止分享", "立即中斷並銷毀 PIN", this::stopShareService));
         shareRows.add(actionRow("返回首頁", "分享會繼續，10 分鐘閒置後自停", this::showHome));
-        showRows(shareRows);
+        if (shareWifi && url != null && pin != null && running) {
+            showRowsWithQr(shareRows, url);
+        } else {
+            showRows(shareRows);
+        }
     }
 
     private void stopShareService() {
         shareRequested = false;
+        setShareScreenAwake(false);
         renderedShareKey = null;
         mainHandler.removeCallbacks(shareStatusPoll);
         try {
@@ -1067,6 +1078,66 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         unbindShareService();
         toast("本機分享已停止");
         showHome();
+    }
+
+    private void setShareScreenAwake(boolean awake) {
+        if (awake) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    }
+
+    private void showRowsWithQr(List<UiRow> newRows, String url) {
+        showRows(newRows);
+        ListView shareList = listView;
+        content.removeView(shareList);
+
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        ImageView qrView = new ImageView(this);
+        qrView.setContentDescription("手機掃描分享網址 QR Code");
+        qrView.setImageBitmap(createQrBitmap(url, dp(190)));
+        qrView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        LinearLayout.LayoutParams qrParams = new LinearLayout.LayoutParams(dp(190), dp(190));
+        qrParams.bottomMargin = dp(6);
+        container.addView(qrView, qrParams);
+
+        TextView hint = text(13, COLOR_DIM, Typeface.BOLD);
+        hint.setText("手機相機掃描 QR Code，再輸入上方 PIN");
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        hintParams.bottomMargin = dp(4);
+        container.addView(hint, hintParams);
+        container.addView(shareList, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        content.addView(container, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        shareList.requestFocus();
+    }
+
+    private static Bitmap createQrBitmap(String text, int requestedPixels) {
+        QrCode code = QrCode.encodeText(text);
+        int quietZone = 4;
+        int units = QrCode.SIZE + quietZone * 2;
+        int scale = Math.max(1, requestedPixels / units);
+        int pixels = units * scale;
+        Bitmap bitmap = Bitmap.createBitmap(pixels, pixels, Bitmap.Config.ARGB_8888);
+        bitmap.eraseColor(Color.WHITE);
+        for (int y = 0; y < QrCode.SIZE; y++) {
+            for (int x = 0; x < QrCode.SIZE; x++) {
+                if (!code.get(x, y)) continue;
+                int left = (x + quietZone) * scale;
+                int top = (y + quietZone) * scale;
+                for (int py = top; py < top + scale; py++) {
+                    for (int px = left; px < left + scale; px++) bitmap.setPixel(px, py, Color.BLACK);
+                }
+            }
+        }
+        return bitmap;
     }
 
     private void returnToMedia() {
@@ -1312,10 +1383,10 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             LinearLayout holder = new LinearLayout(MainActivity.this);
             holder.setOrientation(LinearLayout.VERTICAL);
             holder.setGravity(Gravity.CENTER_VERTICAL);
-            holder.setPadding(dp(12), dp(row.header ? 5 : 10), dp(10), dp(row.header ? 5 : 10));
-            holder.setMinimumHeight(dp(row.header ? 38 : 76));
+            holder.setPadding(dp(10), dp(row.header ? 3 : 6), dp(8), dp(row.header ? 3 : 6));
+            holder.setMinimumHeight(dp(row.header ? 30 : 60));
 
-            TextView primary = text(row.header ? 15 : 20,
+            TextView primary = text(row.header ? 13 : 17,
                     row.header ? COLOR_DIM : COLOR_TEXT,
                     row.header ? Typeface.BOLD : Typeface.NORMAL);
             primary.setText(row.title);
@@ -1324,7 +1395,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
             if (!row.detail.isEmpty()) {
-                TextView secondary = text(13, COLOR_DIM, Typeface.NORMAL);
+                TextView secondary = text(12, COLOR_DIM, Typeface.NORMAL);
                 secondary.setText(row.detail);
                 secondary.setMaxLines(2);
                 holder.addView(secondary, new LinearLayout.LayoutParams(

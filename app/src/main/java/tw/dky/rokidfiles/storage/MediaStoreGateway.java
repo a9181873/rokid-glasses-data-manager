@@ -19,8 +19,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /** Read-only fallback when all-files access has not been granted. */
 public final class MediaStoreGateway implements StorageGateway {
@@ -80,6 +82,8 @@ public final class MediaStoreGateway implements StorageGateway {
         QueryFilter filter = queryFilter(null);
         String[] projection = projection();
         List<MediaItem> items = new ArrayList<>(query.getLimit());
+        Set<String> seenFiles = new HashSet<>();
+        int acceptedBeforePage = 0;
         boolean hasMore = false;
         try (Cursor cursor = resolver.query(
                 collectionUri,
@@ -91,15 +95,22 @@ public final class MediaStoreGateway implements StorageGateway {
             if (cursor == null) {
                 throw new IOException("MediaStore returned a null cursor");
             }
-            if (query.getOffset() > 0 && !cursor.moveToPosition(query.getOffset() - 1)) {
-                return new MediaPage(items, query.getOffset(), false);
-            }
             while (cursor.moveToNext()) {
+                MediaItem item;
+                try {
+                    item = fromCursor(cursor);
+                    if (!isOpenable(item.getUri())) continue;
+                } catch (IOException | SecurityException staleOrRejected) {
+                    // MediaStore 偶爾保留已不存在的舊資料列；不可開啟的項目不應出現在清單。
+                    continue;
+                }
+                if (!seenFiles.add(MediaIdentity.logicalKey(item))) continue;
+                if (acceptedBeforePage++ < query.getOffset()) continue;
                 if (items.size() >= query.getLimit()) {
                     hasMore = true;
                     break;
                 }
-                items.add(fromCursor(cursor));
+                items.add(item);
             }
         }
         return new MediaPage(items, query.getOffset() + items.size(), hasMore);
@@ -228,6 +239,14 @@ public final class MediaStoreGateway implements StorageGateway {
                 relativePath,
                 false,
                 MediaItem.CAPABILITY_READ | MediaItem.CAPABILITY_THUMBNAIL);
+    }
+
+    private boolean isOpenable(Uri uri) {
+        try (AssetFileDescriptor descriptor = resolver.openAssetFileDescriptor(uri, "r")) {
+            return descriptor != null;
+        } catch (IOException | SecurityException unavailable) {
+            return false;
+        }
     }
 
     private static String[] projection() {

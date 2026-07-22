@@ -54,7 +54,7 @@ final class MediaWalker {
                         if (visited.add(item.getId())) {
                             pending.addLast(new DirectoryNode(item.getId()));
                         }
-                    } else if (visitedFiles.add(item.getId())) {
+                    } else if (visitedFiles.add(MediaIdentity.logicalKey(item))) {
                         visitor.visit(item);
                     }
                 }

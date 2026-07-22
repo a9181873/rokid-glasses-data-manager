@@ -10,7 +10,7 @@ final class WebAssets {
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-              <meta name="color-scheme" content="dark">
+              <meta name="color-scheme" content="light">
               <title>眼鏡檔案站</title>
               <link rel="stylesheet" href="/app.css">
               <script src="/app.js" defer></script>
@@ -123,16 +123,19 @@ final class WebAssets {
 
     static final byte[] CSS = bytes("""
             :root {
-              color-scheme: dark;
-              --bg: #030704;
-              --surface: #09150b;
-              --surface-2: #102314;
-              --text: #d9ffd5;
-              --muted: #8fbd8d;
-              --line: #346b38;
-              --bright: #9dff94;
-              --danger: #ffb4a8;
-              --focus: #efffed;
+              color-scheme: light;
+              --bg: #f1f4ef;
+              --surface: #fffdfa;
+              --surface-2: #e8efe8;
+              --text: #26352c;
+              --muted: #68766d;
+              --line: #c9d6cb;
+              --bright: #5f806a;
+              --bright-strong: #42614d;
+              --danger: #a45f5f;
+              --focus: #315a42;
+              --warning: #f6eedf;
+              --shadow: 0 .3rem 1.2rem #35483d18;
               font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             }
             * { box-sizing: border-box; }
@@ -140,22 +143,23 @@ final class WebAssets {
             body {
               margin: 0;
               min-height: 100vh;
-              background: radial-gradient(circle at top, #102414 0, var(--bg) 34rem);
+              background: linear-gradient(180deg, #e7eee7 0, var(--bg) 24rem);
               color: var(--text);
               line-height: 1.5;
             }
-            button, input, .upload { font: inherit; }
+            button, input, .upload { font: inherit; touch-action: manipulation; }
             button, .upload {
-              min-height: 2.85rem;
+              min-height: 3rem;
               border: 1px solid var(--line);
-              border-radius: .65rem;
+              border-radius: .8rem;
               background: var(--surface-2);
               color: var(--text);
               padding: .58rem .9rem;
               cursor: pointer;
               font-weight: 700;
             }
-            button:hover, .upload:hover { border-color: var(--bright); }
+            button:hover, .upload:hover { border-color: var(--bright); background: #dee9df; }
+            button:active, .upload:active { transform: translateY(1px); }
             button:disabled { cursor: not-allowed; opacity: .55; }
             button:focus-visible, input:focus-visible, .upload:focus-within, a:focus-visible {
               outline: 3px solid var(--focus);
@@ -164,7 +168,7 @@ final class WebAssets {
             button.primary, .primary {
               background: var(--bright);
               border-color: var(--bright);
-              color: #061007;
+              color: #fff;
             }
             .topbar {
               display: flex;
@@ -175,15 +179,17 @@ final class WebAssets {
               margin: auto;
               padding: calc(1rem + env(safe-area-inset-top)) 1rem 1rem;
               border-bottom: 1px solid var(--line);
+              background: #f8faf6dd;
+              backdrop-filter: blur(10px);
             }
             h1, h2, p { margin-top: 0; }
             h1 { margin-bottom: 0; font-size: clamp(1.65rem, 5vw, 2.35rem); line-height: 1.05; }
             h2 { font-size: 1.25rem; }
-            .eyebrow { margin-bottom: .2rem; color: var(--bright); font-size: .72rem; letter-spacing: .16em; }
+            .eyebrow { margin-bottom: .2rem; color: var(--bright-strong); font-size: .72rem; letter-spacing: .16em; }
             .local-badge {
               border: 1px solid var(--bright);
               border-radius: 99rem;
-              color: var(--bright);
+              color: var(--bright-strong);
               padding: .35rem .7rem;
               white-space: nowrap;
               font-size: .82rem;
@@ -192,10 +198,10 @@ final class WebAssets {
             main { max-width: 78rem; min-height: 65vh; margin: 0 auto; padding: 1rem; }
             .panel {
               background: var(--surface);
-              background: color-mix(in srgb, var(--surface) 94%, transparent);
               border: 1px solid var(--line);
-              border-radius: .9rem;
-              padding: 1rem;
+              border-radius: 1.1rem;
+              padding: 1.05rem;
+              box-shadow: var(--shadow);
             }
             .narrow { max-width: 32rem; margin: 3rem auto; }
             #pair-form { display: grid; gap: .65rem; }
@@ -204,8 +210,8 @@ final class WebAssets {
               min-height: 3.5rem;
               border: 2px solid var(--line);
               border-radius: .65rem;
-              background: #010402;
-              color: var(--bright);
+              background: #fff;
+              color: var(--bright-strong);
               padding: .5rem 1rem;
               text-align: center;
               font-size: 1.8rem;
@@ -217,7 +223,7 @@ final class WebAssets {
               margin-bottom: 1rem;
               padding: .8rem 1rem;
               border-left: .35rem solid var(--bright);
-              background: #122516;
+              background: var(--warning);
               color: var(--muted);
             }
             .warning strong { color: var(--text); }
@@ -232,7 +238,7 @@ final class WebAssets {
               gap: .8rem;
               align-items: center;
               margin-bottom: 1rem;
-              box-shadow: 0 .4rem 1.2rem #000b;
+              box-shadow: 0 .45rem 1.4rem #35483d24;
             }
             .remote-head h2 { margin: 0; }
             .remote-head span { color: var(--muted); font-size: .82rem; }
@@ -245,15 +251,16 @@ final class WebAssets {
               width: 100%;
               border: 1px solid var(--line);
               border-radius: .65rem;
-              background: #010402;
+              background: #fff;
               color: var(--text);
               padding: .55rem .75rem;
             }
             .upload { display: inline-flex; align-items: center; justify-content: center; }
             .filter-block { display: grid; gap: .35rem; }
             .control-label { margin: 0; color: var(--muted); font-size: .86rem; font-weight: 700; }
-            .filters { display: flex; gap: .45rem; overflow-x: auto; }
-            .filters [aria-pressed="true"] { border-color: var(--bright); color: var(--bright); }
+            .filters { display: flex; gap: .45rem; overflow-x: auto; padding: .1rem 0 .35rem; scrollbar-width: thin; }
+            .filters button { flex: 0 0 auto; min-height: 2.65rem; border-radius: 99rem; }
+            .filters [aria-pressed="true"] { border-color: var(--bright); background: #dce9df; color: var(--bright-strong); }
             .context-tools {
               display: flex;
               align-items: center;
@@ -262,14 +269,14 @@ final class WebAssets {
               padding: .75rem;
               border: 1px solid var(--line);
               border-radius: .7rem;
-              background: #061007;
+              background: #f7f9f5;
               color: var(--muted);
             }
             .context-tools input {
               min-height: 2.85rem;
               border: 1px solid var(--line);
               border-radius: .65rem;
-              background: #010402;
+              background: #fff;
               color: var(--text);
               padding: .55rem .75rem;
             }
@@ -277,15 +284,16 @@ final class WebAssets {
             progress { width: 100%; accent-color: var(--bright); }
             .result-head { display: flex; justify-content: space-between; gap: 1rem; margin: 1rem 0 .55rem; color: var(--muted); }
             .result-head p { margin: 0; }
-            .status { color: var(--bright); text-align: right; }
+            .status { color: var(--bright-strong); text-align: right; }
             .status.is-error { color: var(--danger); }
             .files { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: .8rem; }
             .file-card {
               min-width: 0;
               overflow: hidden;
               border: 1px solid var(--line);
-              border-radius: .8rem;
+              border-radius: 1rem;
               background: var(--surface);
+              box-shadow: var(--shadow);
             }
             .file-card.is-protected { border-color: var(--bright); }
             .thumb-wrap {
@@ -293,12 +301,12 @@ final class WebAssets {
               place-items: center;
               aspect-ratio: 16 / 10;
               overflow: hidden;
-              background: #010402;
+              background: #e5ebe5;
               color: var(--muted);
               font-size: 2rem;
             }
             .thumb { width: 100%; height: 100%; object-fit: cover; }
-            .file-body { padding: .8rem; }
+            .file-body { padding: .9rem; }
             .file-name { margin: 0 0 .25rem; overflow-wrap: anywhere; font-weight: 800; }
             .meta { margin: 0; color: var(--muted); font-size: .86rem; }
             .badges { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 .5rem; }
@@ -310,7 +318,7 @@ final class WebAssets {
               font-size: .76rem;
               font-weight: 800;
             }
-            .badge.active { border-color: var(--bright); color: var(--bright); }
+            .badge.active { border-color: var(--bright); background: #e2ece3; color: var(--bright-strong); }
             .badge.trash { border-color: var(--danger); color: var(--danger); }
             .actions { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin-top: .7rem; }
             .actions a {
@@ -323,6 +331,7 @@ final class WebAssets {
               color: var(--text);
               text-decoration: none;
               font-weight: 700;
+              background: var(--surface-2);
             }
             .actions .danger { color: var(--danger); }
             .actions .wide { grid-column: 1 / -1; }
@@ -331,7 +340,7 @@ final class WebAssets {
               border: 1px solid var(--line);
               border-radius: .9rem;
               padding: .85rem;
-              background: #061007;
+              background: #f7f9f5;
             }
             .duplicate-head {
               display: flex;
@@ -350,8 +359,10 @@ final class WebAssets {
             .empty strong { color: var(--text); }
             footer { max-width: 78rem; margin: 1rem auto; padding: 1rem; color: var(--muted); font-size: .82rem; }
             @media (max-width: 36rem) {
-              main { padding: .75rem; }
+              main { padding: .7rem; }
               .topbar { padding-left: .8rem; padding-right: .8rem; }
+              .topbar h1 { font-size: 1.55rem; }
+              .local-badge { font-size: .74rem; }
               .narrow { margin-top: 1.2rem; }
               .toolbar-row > button, .toolbar-row > .upload { flex: 1 1 8rem; }
               .files { grid-template-columns: 1fr; }
@@ -359,8 +370,13 @@ final class WebAssets {
               .duplicate-head { display: grid; }
               .duplicate-head p { text-align: left; }
               .context-tools > * { flex: 1 1 10rem; }
-              .remote { position: static; grid-template-columns: 1fr; }
+              .remote { position: sticky; top: .35rem; grid-template-columns: 1fr; padding: .8rem; }
+              .remote-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+              .remote-head h2 { font-size: 1.05rem; }
               .remote-grid { grid-template-columns: 1fr 1fr; }
+              .remote-grid button { min-height: 3.2rem; }
+              .toolbar { gap: .7rem; }
+              .actions button, .actions a { min-height: 3rem; }
             }
             @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
             """);

@@ -88,7 +88,7 @@ public final class ShareService extends Service implements LocalShareServer.List
     private volatile String visiblePin;
     private volatile String lastError;
     private int generation;
-    private PowerManager.WakeLock wakeLock;
+    private PowerManager.WakeLock screenWakeLock;
 
     /** 應由 Application 或 Activity 在 start() 前安裝 thread-safe repository factory。 */
     public static void setMediaAccessProvider(MediaAccess.Provider provider) {
@@ -137,13 +137,7 @@ public final class ShareService extends Service implements LocalShareServer.List
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
-        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-        if (powerManager != null) {
-            wakeLock = powerManager.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK,
-                    getPackageName() + ":local-share");
-            wakeLock.setReferenceCounted(false);
-        }
+        createScreenWakeLock();
     }
 
     @Override
@@ -361,7 +355,7 @@ public final class ShareService extends Service implements LocalShareServer.List
     }
 
     private void acquireOrRefreshWakeLock() {
-        PowerManager.WakeLock lock = wakeLock;
+        PowerManager.WakeLock lock = screenWakeLock;
         if (lock == null) return;
         try {
             if (lock.isHeld()) lock.release();
@@ -372,7 +366,7 @@ public final class ShareService extends Service implements LocalShareServer.List
     }
 
     private void releaseWakeLock() {
-        PowerManager.WakeLock lock = wakeLock;
+        PowerManager.WakeLock lock = screenWakeLock;
         if (lock != null && lock.isHeld()) {
             try {
                 lock.release();
@@ -380,6 +374,17 @@ public final class ShareService extends Service implements LocalShareServer.List
                 // best effort
             }
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void createScreenWakeLock() {
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        if (powerManager == null) return;
+        // Rokid 的手機遙控需要使用者同時看見眼鏡畫面；分享停止或閒置逾時即釋放。
+        screenWakeLock = powerManager.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                getPackageName() + ":phone-control-screen");
+        screenWakeLock.setReferenceCounted(false);
     }
 
     private void closeCurrentServer() {

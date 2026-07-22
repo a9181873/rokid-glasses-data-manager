@@ -7,10 +7,11 @@
 - The service is off by default and can be started only by the user from the foreground interface on the glasses.
 - USB mode listens only on the device loopback interface. Wi-Fi mode listens only on the current private IPv4 address.
 - Each start generates a new pairing code and a high-entropy session token. Failed attempts are rate-limited, and the service stops automatically after 10 minutes of inactivity.
-- The web API uses opaque server-side IDs and does not accept client-provided file paths. Every source must still pass the media allowlist and canonical-path validation.
+- The web API uses opaque server-side IDs and does not accept client-provided file paths. Direct-file access validates canonical paths and symbolic links; the MediaStore fallback validates the primary volume, relative-path allowlist, and actual readability.
 - Mutating operations require a same-origin session cookie and custom CSRF header. Responses use CSP, `frame-ancestors 'none'`, `nosniff`, and `no-store`.
 - An upload is fully written to a temporary file and `fsync`ed before it is moved to its final name, without replacing an existing same-name file. Delete actions move items to trash by default.
 - The app does not request camera, microphone, location, contacts, advertising ID, or launch-at-boot permission, and it does not connect to any external host.
+- QR codes are encoded entirely on the glasses without an external QR service. The screen wake lock is held only during sharing and is released when sharing stops or times out.
 
 ## HTTP limitation
 

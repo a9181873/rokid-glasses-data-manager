@@ -6,7 +6,7 @@
 
 Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome display. The app runs directly on the glasses and lets you manage the photos and videos stored on them from the glasses, a phone browser, or a computer. There is no need to synchronize the entire gallery to a phone first, and the app has no cloud service, account, advertising, or analytics.
 
-> “Glasses File Station” is the translated documentation name. The installed APK and current interface remain in Traditional Chinese, with the fixed launcher label `眼鏡檔案站`. This project provides one installable edition only. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
+> The installed APK and current interface use Traditional Chinese. Rokid does not publish every Android behavior of the consumer YodaOS as a stable contract. Before regular use, follow the [on-device acceptance checklist](docs/DEVICE_CHECK.en.md) to verify file paths, storage permissions, and touchpad events on your firmware.
 
 ## Features
 
@@ -16,11 +16,13 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 - Rename, move to trash, restore, and upload files. The app deliberately provides no permanent-delete action, reducing the risk of an unrecoverable touchpad mistake.
 - USB mode listens only on the glasses' local `127.0.0.1:8765` interface and is used with ADB port forwarding.
 - Wi-Fi mode listens only on the current private IPv4 address. Each start creates a new pairing code and 256-bit session token, and the service stops automatically after 10 minutes of inactivity.
+- The glasses generate the Wi-Fi URL QR code entirely offline. Their display stays awake during phone management and returns to normal sleep behavior when sharing stops or times out.
+- The MediaStore fallback rejects stale rows that cannot be opened and deduplicates by the real relative path, preventing one photo from appearing twice.
 - The web interface is embedded entirely in the APK. It loads no CDN, font, tracking script, or external API.
 
 ## Storage permission
 
-This project has only one edition, named “Glasses File Station.” On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback.
+On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback.
 
 ## Confirmed device characteristics
 
@@ -53,7 +55,7 @@ The installable, release-signed build delivered with this project is located at:
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256: `9150e6856995862df1c279783ec6e5844f8ffb33b653f1bf2c9e398647d14cb0`. Signing certificate fingerprint: `b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`.
+SHA-256: `f02defc45c6b25d759b6c6e8323a02a524f762319b032a9f4625b8192e596594`. Signing certificate fingerprint: `b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`.
 
 The maintainer's local `private-signing/` directory contains the private key required for future in-place updates. It is excluded by `.gitignore` and is never pushed to GitHub. Keep an offline backup and never publish it.
 
@@ -66,7 +68,7 @@ adb devices -l
 adb install -r dist/GlassesFiles.apk
 ```
 
-The magnetic charging cable included in the box might not carry data. After installation, look for the fixed launcher label `眼鏡檔案站`, usually near the end of the app list on the glasses; the exact behavior depends on the device firmware.
+The magnetic charging cable included in the box might not carry data. After installation, look for `眼鏡檔案站`, usually near the end of the app list on the glasses; the exact behavior depends on the device firmware.
 
 ## Use
 
@@ -90,7 +92,7 @@ adb forward --remove tcp:8765
 
 1. Connect the glasses to your own phone hotspot, or connect the phone and glasses to the same trusted Wi-Fi network.
 2. On the glasses, open `Wi‑Fi 手機管理` (Wi-Fi phone management).
-3. In the phone browser, open the `http://private-IP:8765` address shown on the glasses and enter the current pairing code.
+3. Scan the offline QR code shown on the glasses with the phone camera (or enter `http://private-IP:8765` manually), then enter the current pairing code.
 4. Stop sharing immediately when finished.
 
 The Wi-Fi web interface retrieves only the list, thumbnail, or file that you request. It creates a copy on the phone or computer only when you select “Download.”
