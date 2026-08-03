@@ -136,7 +136,7 @@ public final class LocalShareServer implements Closeable {
         this.sessionToken = randomToken(32); // 256-bit；高於最低 192-bit 要求。
         this.csrfToken = randomToken(32);
         this.workers = new ThreadPoolExecutor(
-                2,
+                4,
                 4,
                 30L,
                 TimeUnit.SECONDS,
@@ -340,6 +340,13 @@ public final class LocalShareServer implements Closeable {
                     return;
                 case "/api/restore":
                     handleRestore(request, response);
+                    return;
+                case "/api/delete":
+                    handleDeletePermanently(request, response);
+                    return;
+                case "/api/trash/empty":
+                    requireNoBody(request);
+                    handleEmptyTrash(response);
                     return;
                 case "/api/rename":
                     handleRename(request, response);
@@ -594,6 +601,60 @@ public final class LocalShareServer implements Closeable {
         appendItemJson(body, ref.opaqueId, restored);
         body.append('}');
         response.sendJson(200, body.toString(), Collections.emptyMap());
+    }
+
+    private void handleDeletePermanently(Request request, ResponseWriter response)
+            throws IOException, HttpProblem {
+        Map<String, Object> object = readActionObject(request);
+        EntryRef ref = requireEntry(requireJsonString(object, "id"));
+        if (!ref.item.isTrashed()) {
+            throw new HttpProblem(409, "只有垃圾桶內的項目可以永久刪除");
+        }
+        if (ref.item.isProtectedFromTrash()) {
+            throw new HttpProblem(423, "此檔案已啟用防誤刪保護");
+        }
+        requireItemCapability(
+                ref.item.canDeletePermanently(), "此項目不支援永久刪除");
+        mediaAccess.deletePermanently(ref.item.getRepositoryId());
+        invalidateDuplicateSnapshot();
+        removeEntry(ref);
+        response.sendJson(200, "{\"ok\":true}", Collections.emptyMap());
+    }
+
+    private void handleEmptyTrash(ResponseWriter response) throws IOException, HttpProblem {
+        List<MediaItem> trash = mediaAccess.listTrash();
+        if (trash == null) {
+            throw new IOException("repository returned null trash list");
+        }
+        if (trash.size() > MAX_LIST_ENTRIES) {
+            throw new HttpProblem(413, "垃圾桶項目超過單次處理上限");
+        }
+        int deleted = 0;
+        int failed = 0;
+        int skipped = 0;
+        for (MediaItem item : trash) {
+            validateRepositoryItem(item);
+            if (!item.isTrashed() || item.isProtectedFromTrash()
+                    || !item.canDeletePermanently()) {
+                skipped++;
+                continue;
+            }
+            try {
+                mediaAccess.deletePermanently(item.getRepositoryId());
+                removeRepositoryEntry(item.getRepositoryId());
+                deleted++;
+            } catch (IOException | RuntimeException failure) {
+                failed++;
+            }
+        }
+        if (deleted > 0) {
+            invalidateDuplicateSnapshot();
+        }
+        response.sendJson(200,
+                "{\"ok\":true,\"deleted\":" + deleted
+                        + ",\"failed\":" + failed
+                        + ",\"skipped\":" + skipped + "}",
+                Collections.emptyMap());
     }
 
     private void handleRename(Request request, ResponseWriter response)
@@ -889,6 +950,17 @@ public final class LocalShareServer implements Closeable {
         repositoryToOpaque.remove(ref.item.getRepositoryId(), ref.opaqueId);
     }
 
+    private void removeRepositoryEntry(String repositoryId) {
+        String opaqueId = repositoryToOpaque.remove(repositoryId);
+        if (opaqueId == null) {
+            return;
+        }
+        EntryRef ref = opaqueToEntry.get(opaqueId);
+        if (ref != null && repositoryId.equals(ref.item.getRepositoryId())) {
+            opaqueToEntry.remove(opaqueId, ref);
+        }
+    }
+
     private static void validateRepositoryItem(MediaItem item) throws IOException {
         if (item == null) {
             throw new IOException("repository returned null item");
@@ -939,6 +1011,7 @@ public final class LocalShareServer implements Closeable {
                 .append(",\"canRestore\":").append(item.canRestore())
                 .append(",\"canFavorite\":").append(item.canFavorite())
                 .append(",\"canProtect\":").append(item.canProtect())
+                .append(",\"canDelete\":").append(item.canDeletePermanently())
                 .append('}');
     }
 

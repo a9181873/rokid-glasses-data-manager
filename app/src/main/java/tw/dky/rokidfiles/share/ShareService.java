@@ -178,7 +178,7 @@ public final class ShareService extends Service implements LocalShareServer.List
                 InetAddress address = MODE_WIFI.equals(mode)
                         ? findPrivateNetworkIpv4() : InetAddress.getByName("127.0.0.1");
                 if (address == null) {
-                    throw new IOException("找不到可安全監聽的私有 Wi-Fi IPv4");
+                    throw new IOException("眼鏡尚未連上手機熱點或同一個私人 Wi-Fi");
                 }
                 MediaAccess access = provider.create(getApplicationContext());
                 if (access == null) {

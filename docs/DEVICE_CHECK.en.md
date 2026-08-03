@@ -65,4 +65,4 @@ Wi-Fi: test only on your own phone hotspot. Confirm that the IP shown by the app
 
 ## 5. Destructive operations
 
-Use test files only to verify renaming, moving to trash, restoration, an interrupted upload, duplicate filenames, insufficient space, and videos larger than 2 GB. Confirm that no failure leaves a partially published file. The app provides no permanent-delete action.
+Use test files only to verify renaming, moving to trash, restoration, per-file permanent deletion, emptying trash, an interrupted upload, duplicate filenames, insufficient space, and videos larger than 2 GB. Confirm that permanent deletion requires two confirmations, protected items are retained, and no failure leaves a partially published file.

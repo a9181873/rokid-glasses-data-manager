@@ -91,6 +91,10 @@ final class WebAssets {
                       <span>結果是掃描當下的快照；檔案變更後請重新掃描。</span>
                       <button id="duplicate-scan" class="primary" type="button">開始掃描重複檔</button>
                     </div>
+                    <div id="trash-tools" class="context-tools" hidden>
+                      <span>永久刪除無法復原；已保護項目會保留。</span>
+                      <button id="empty-trash" class="danger" type="button">清空垃圾桶</button>
+                    </div>
                     <div class="filter-block">
                       <p class="control-label">檔案類型</p>
                       <div class="filters" role="group" aria-label="檔案類型">
@@ -334,6 +338,7 @@ final class WebAssets {
               background: var(--surface-2);
             }
             .actions .danger { color: var(--danger); }
+            button.danger { color: var(--danger); border-color: var(--danger); }
             .actions .wide { grid-column: 1 / -1; }
             .duplicate-groups { display: grid; gap: 1rem; }
             .duplicate-group {
@@ -400,6 +405,8 @@ final class WebAssets {
               const dateInput = byId('date-filter');
               const duplicateTools = byId('duplicate-tools');
               const duplicateScan = byId('duplicate-scan');
+              const trashTools = byId('trash-tools');
+              const emptyTrashButton = byId('empty-trash');
               const viewLabels = Object.freeze({
                 all: '全部',
                 today: '今日',
@@ -584,6 +591,39 @@ final class WebAssets {
                 return node;
               };
 
+              // 同時只取兩張縮圖，保留 HTTP worker 給影片串流與使用者操作。
+              const thumbnailQueue = [];
+              let activeThumbnailLoads = 0;
+              const pumpThumbnailQueue = () => {
+                while (activeThumbnailLoads < 2 && thumbnailQueue.length) {
+                  const request = thumbnailQueue.shift();
+                  if (!request.wrap.isConnected && request.wasConnected) continue;
+                  request.wasConnected = request.wrap.isConnected;
+                  activeThumbnailLoads += 1;
+                  const finished = () => {
+                    activeThumbnailLoads -= 1;
+                    pumpThumbnailQueue();
+                  };
+                  request.image.addEventListener('load', () => {
+                    if (request.wrap.isConnected) {
+                      request.wrap.textContent = '';
+                      request.wrap.append(request.image);
+                    }
+                    finished();
+                  }, {once: true});
+                  request.image.addEventListener('error', () => {
+                    request.image.remove();
+                    finished();
+                  }, {once: true});
+                  request.image.src = request.url;
+                }
+              };
+
+              const queueThumbnail = (image, wrap, url) => {
+                thumbnailQueue.push({image, wrap, url, wasConnected: wrap.isConnected});
+                window.setTimeout(pumpThumbnailQueue, 0);
+              };
+
               const isTrashItem = (item) => selectedView === 'trash' || item.trashed === true;
 
               const renderCard = (item) => {
@@ -597,12 +637,10 @@ final class WebAssets {
                 img.className = 'thumb';
                 img.loading = 'lazy';
                 img.alt = '';
-                img.src = `/api/thumb?id=${encodeURIComponent(item.id)}`;
-                img.addEventListener('load', () => {
-                  thumbWrap.textContent = '';
-                  thumbWrap.append(img);
-                }, {once: true});
-                img.addEventListener('error', () => img.remove(), {once: true});
+                queueThumbnail(
+                  img,
+                  thumbWrap,
+                  `/api/thumb?id=${encodeURIComponent(item.id)}`);
                 card.append(thumbWrap);
 
                 const body = document.createElement('div');
@@ -614,7 +652,7 @@ final class WebAssets {
                 if (item.protected) badges.append(badge('已保護', 'active'));
                 if (isTrashItem(item)) badges.append(badge('垃圾桶', 'trash'));
                 if (item.canRename !== true && item.canTrash !== true
-                    && item.canRestore !== true) {
+                    && item.canRestore !== true && item.canDelete !== true) {
                   badges.append(badge('檔案唯讀'));
                 }
                 const name = document.createElement('p');
@@ -634,6 +672,10 @@ final class WebAssets {
                   if (item.canRestore === true) {
                     actions.append(actionButton('還原檔案', 'primary wide',
                       () => restoreItem(item)));
+                  }
+                  if (item.canDelete === true) {
+                    actions.append(actionButton('永久刪除', 'danger wide',
+                      () => deleteItemPermanently(item)));
                   }
                 } else {
                   const open = document.createElement('a');
@@ -761,6 +803,7 @@ final class WebAssets {
                 });
                 dateTools.hidden = selectedView !== 'date';
                 duplicateTools.hidden = selectedView !== 'duplicates';
+                trashTools.hidden = selectedView !== 'trash';
               };
 
               const loadDuplicates = async (scan, sequence) => {
@@ -898,6 +941,32 @@ final class WebAssets {
                 finishMutation('檔案已還原', data.file, item.id);
               };
 
+              const deleteItemPermanently = async (item) => {
+                if (item.canDelete !== true) throw new Error('此項目不支援永久刪除。');
+                if (!window.confirm(`永久刪除「${item.name}」？刪除後無法還原。`)) return;
+                if (!window.confirm('請再次確認：確定要永久刪除嗎？')) return;
+                setStatus('正在永久刪除…');
+                await postJson('/api/delete', {id: item.id});
+                finishMutation('檔案已永久刪除', null, item.id);
+              };
+
+              const emptyTrash = async () => {
+                if (!window.confirm('清空垃圾桶？已保護項目會保留，其他項目將永久刪除。')) return;
+                if (!window.confirm('請再次確認：永久刪除後無法復原。')) return;
+                emptyTrashButton.disabled = true;
+                setStatus('正在清空垃圾桶…');
+                try {
+                  const data = await api('/api/trash/empty', {method: 'POST'});
+                  await loadCurrentView();
+                  setStatus(`已刪除 ${data.deleted || 0} 個；失敗 ${data.failed || 0} 個；保留 ${data.skipped || 0} 個`,
+                    Number(data.failed || 0) > 0);
+                } catch (error) {
+                  if (error.status !== 401) setStatus(error.message, true);
+                } finally {
+                  emptyTrashButton.disabled = false;
+                }
+              };
+
               const scanDuplicates = async () => {
                 const sequence = ++loadSequence;
                 duplicateScan.disabled = true;
@@ -945,18 +1014,46 @@ final class WebAssets {
                 xhr.send(file);
               });
 
+              const uploadRank = (file) => {
+                const type = String(file.type || '').toLocaleLowerCase('en-US');
+                const name = String(file.name || '');
+                if (type.startsWith('image/') || /\\.(?:jpe?g|png|webp|heic|heif)$/i.test(name)) {
+                  return 0;
+                }
+                if (type.startsWith('video/')) return 1;
+                return 2;
+              };
+
               byId('upload').addEventListener('change', async (event) => {
-                const selected = Array.from(event.target.files || []);
+                const selected = Array.from(event.target.files || [])
+                  .map((file, index) => ({file, index}))
+                  .sort((left, right) => uploadRank(left.file) - uploadRank(right.file)
+                    || left.index - right.index)
+                  .map((entry) => entry.file);
                 if (!selected.length) return;
                 const state = byId('upload-state');
                 state.hidden = false;
+                let completed = 0;
+                const failures = [];
                 try {
                   for (let index = 0; index < selected.length; index += 1) {
-                    await uploadOne(selected[index], index + 1, selected.length);
+                    try {
+                      await uploadOne(selected[index], index + 1, selected.length);
+                      completed += 1;
+                    } catch (error) {
+                      if (error.status === 401) throw error;
+                      failures.push(`${selected[index].name}：${error.message}`);
+                    }
                   }
-                  duplicatesDirty = true;
-                  await selectView('all');
-                  setStatus('上傳完成');
+                  if (completed > 0) {
+                    duplicatesDirty = true;
+                    await selectView('all');
+                  }
+                  if (failures.length) {
+                    setStatus(`已上傳 ${completed} 個，失敗 ${failures.length} 個：${failures.join('；')}`, true);
+                  } else {
+                    setStatus(`已上傳 ${completed} 個檔案`);
+                  }
                 } catch (error) {
                   if (error.status !== 401) setStatus(error.message, true);
                 } finally {
@@ -977,6 +1074,7 @@ final class WebAssets {
               });
 
               duplicateScan.addEventListener('click', scanDuplicates);
+              emptyTrashButton.addEventListener('click', emptyTrash);
               searchNode.addEventListener('input', render);
               byId('refresh').addEventListener('click', loadCurrentView);
 
@@ -986,6 +1084,7 @@ final class WebAssets {
                   if (view === 'date') {
                     dateTools.hidden = false;
                     duplicateTools.hidden = true;
+                    trashTools.hidden = true;
                     dateInput.focus();
                     return;
                   }

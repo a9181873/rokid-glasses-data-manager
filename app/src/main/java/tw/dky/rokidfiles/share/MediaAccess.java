@@ -69,6 +69,11 @@ public interface MediaAccess {
         throw new Failure(Failure.Reason.UNSUPPORTED, "此儲存區不支援還原");
     }
 
+    /** 選用：永久刪除已在垃圾桶內的項目。 */
+    default void deletePermanently(String repositoryId) throws IOException {
+        throw new Failure(Failure.Reason.UNSUPPORTED, "此儲存區不支援永久刪除");
+    }
+
     /** 選用：切換最愛。回傳更新後的完整項目。 */
     default MediaItem setFavorite(String repositoryId, boolean favorite) throws IOException {
         throw new Failure(Failure.Reason.UNSUPPORTED, "此儲存區不支援最愛標記");
@@ -123,6 +128,7 @@ public interface MediaAccess {
         private final boolean canRestore;
         private final boolean canFavorite;
         private final boolean canProtect;
+        private final boolean canDeletePermanently;
 
         public MediaItem(
                 String repositoryId,
@@ -182,6 +188,31 @@ public interface MediaAccess {
                 boolean canFavorite,
                 boolean canProtect
         ) {
+            this(repositoryId, displayName, mimeType, kind, size, modifiedEpochMillis,
+                    durationMillis, width, height, favorite, protectedFromTrash, trashed,
+                    canRename, canTrash, canRestore, canFavorite, canProtect, false);
+        }
+
+        public MediaItem(
+                String repositoryId,
+                String displayName,
+                String mimeType,
+                Kind kind,
+                long size,
+                long modifiedEpochMillis,
+                long durationMillis,
+                int width,
+                int height,
+                boolean favorite,
+                boolean protectedFromTrash,
+                boolean trashed,
+                boolean canRename,
+                boolean canTrash,
+                boolean canRestore,
+                boolean canFavorite,
+                boolean canProtect,
+                boolean canDeletePermanently
+        ) {
             this.repositoryId = requireText(repositoryId, "repositoryId");
             this.displayName = requireText(displayName, "displayName");
             this.mimeType = mimeType == null || mimeType.isEmpty()
@@ -200,6 +231,7 @@ public interface MediaAccess {
             this.canRestore = canRestore;
             this.canFavorite = canFavorite;
             this.canProtect = canProtect;
+            this.canDeletePermanently = canDeletePermanently;
         }
 
         public static MediaItem basic(
@@ -280,6 +312,10 @@ public interface MediaAccess {
 
         public boolean canProtect() {
             return canProtect;
+        }
+
+        public boolean canDeletePermanently() {
+            return canDeletePermanently;
         }
 
         private static String requireText(String value, String field) {

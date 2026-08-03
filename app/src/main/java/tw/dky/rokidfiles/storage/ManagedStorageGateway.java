@@ -125,7 +125,11 @@ public final class ManagedStorageGateway implements StorageGateway {
             return protectedResult();
         }
         StorageOperationResult result = delegate.rename(id, newDisplayName);
-        return migrateAndDecorate(before, result);
+        StorageOperationResult migrated = migrateAndDecorate(before, result);
+        if (migrated.isSuccess()) {
+            metadata.clearDuplicateGroups();
+        }
+        return migrated;
     }
 
     @Override
@@ -140,7 +144,11 @@ public final class ManagedStorageGateway implements StorageGateway {
             return protectedResult();
         }
         StorageOperationResult result = delegate.moveToTrash(id);
-        return migrateAndDecorate(before, result);
+        StorageOperationResult migrated = migrateAndDecorate(before, result);
+        if (migrated.isSuccess()) {
+            metadata.clearDuplicateGroups();
+        }
+        return migrated;
     }
 
     @Override
@@ -151,7 +159,30 @@ public final class ManagedStorageGateway implements StorageGateway {
         } catch (IOException | RuntimeException failure) {
             return readFailure(failure);
         }
-        return migrateAndDecorate(before, delegate.restore(id));
+        StorageOperationResult migrated = migrateAndDecorate(before, delegate.restore(id));
+        if (migrated.isSuccess()) {
+            metadata.clearDuplicateGroups();
+        }
+        return migrated;
+    }
+
+    @Override
+    public StorageOperationResult deletePermanently(String id) {
+        MediaItem before;
+        try {
+            before = getItem(id);
+        } catch (IOException | RuntimeException failure) {
+            return readFailure(failure);
+        }
+        if (before.isProtected()) {
+            return protectedResult();
+        }
+        StorageOperationResult result = delegate.deletePermanently(id);
+        if (result.isSuccess()) {
+            metadata.remove(before);
+            metadata.clearDuplicateGroups();
+        }
+        return result;
     }
 
     @Override
@@ -164,6 +195,7 @@ public final class ManagedStorageGateway implements StorageGateway {
         StorageOperationResult result = delegate.publishUpload(
                 parentId, displayName, mimeType, source, contentLength);
         if (result.isSuccess() && result.getItem() != null) {
+            metadata.clearDuplicateGroups();
             return StorageOperationResult.success(metadata.decorate(result.getItem()));
         }
         return result;

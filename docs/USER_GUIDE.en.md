@@ -17,7 +17,7 @@ The current APK and browser interface are in Traditional Chinese. The English te
 | App launcher | `Rokid眼鏡檔案管理APP` |
 | Allow file management | `允許檔案管理` |
 | USB computer management | `USB 電腦管理` |
-| Wi-Fi phone management | `Wi‑Fi 手機管理` |
+| Same-Wi-Fi phone management | `同 Wi‑Fi 手機管理` |
 | Stop sharing | `停止分享` |
 | Protect / remove protection | `設為保護` / `解除保護` |
 | Move to trash / restore | `移到垃圾桶` / `還原` |
@@ -90,6 +90,7 @@ Select “Protect” on a file's action page. A protected item cannot be renamed
 
 - The normal “Delete” action only moves an item to the recoverable trash.
 - An item in the trash can be restored to its original location. If its name is already in use, the app stops and asks you to resolve the conflict first.
+- In Trash, you can permanently delete one item or empty all eligible items. Both actions require two confirmations, retain protected items, and cannot be undone.
 
 ## Phone-browser management and remote control
 
@@ -105,7 +106,7 @@ After pairing, you can:
 
 - Filter by today, a specific date, photo, video, protected, favorite, large file, or duplicate group.
 - Stream a preview directly. Video supports Range requests, so seeking or reconnecting does not require transferring the entire video again.
-- Toggle protection or favorite status, rename, move to trash, or download one item at a time.
+- Toggle protection or favorite status, rename, move to trash, restore, permanently delete, or download one item at a time.
 - Control the glasses interface with the four large Previous, Next, Open, and Back buttons under “Glasses remote control.”
 
 When finished, select “Stop sharing” on the glasses. The service also stops automatically after 10 minutes without activity.

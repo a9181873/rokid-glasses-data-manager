@@ -1,0 +1,3 @@
+Added safe permanent deletion and empty-trash controls with two confirmations.
+Kept protected items out of permanent deletion.
+Improved mixed photo/video handling, touch selection, and same-Wi-Fi startup guidance.

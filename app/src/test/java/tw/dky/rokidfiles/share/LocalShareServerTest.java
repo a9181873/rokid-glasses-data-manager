@@ -97,6 +97,18 @@ public final class LocalShareServerTest {
     }
 
     @Test
+    public void javaScriptAssetThrottlesThumbnailsAndPrioritizesImageUploads()
+            throws Exception {
+        HttpResponse response = send("GET", "/app.js", headers("Host", host), null);
+        String script = response.bodyUtf8();
+
+        assertEquals(200, response.status);
+        assertTrue(script.contains("activeThumbnailLoads < 2"));
+        assertTrue(script.contains("/\\.(?:jpe?g|png|webp|heic|heif)$/i"));
+        assertTrue(script.contains("uploadRank(left.file) - uploadRank(right.file)"));
+    }
+
+    @Test
     public void wrongHostAndCrossOriginPairingAreRejected() throws Exception {
         HttpResponse wrongHost = send(
                 "GET",
@@ -187,6 +199,7 @@ public final class LocalShareServerTest {
         assertTrue(json.contains("\"canRestore\":false"));
         assertTrue(json.contains("\"canFavorite\":false"));
         assertTrue(json.contains("\"canProtect\":false"));
+        assertTrue(json.contains("\"canDelete\":false"));
 
         assertEquals(403, postJson("/api/trash", credentials,
                 "{\"id\":\"" + opaqueId + "\"}").status);
@@ -199,6 +212,105 @@ public final class LocalShareServerTest {
         assertEquals(403, postJson("/api/protected", credentials,
                 "{\"id\":\"" + opaqueId + "\",\"value\":true}").status);
         assertEquals(0, mediaAccess.mutationCalls);
+    }
+
+    @Test
+    public void trashedItemCanBePermanentlyDeletedOnlyWithExplicitCapability()
+            throws Exception {
+        mediaAccess.items.clear();
+        mediaAccess.items.add(new MediaItem(
+                REPOSITORY_ID,
+                "垃圾桶照片.jpg",
+                "image/jpeg",
+                Kind.PHOTO,
+                FILE_BYTES.length,
+                1_700_000_000_000L,
+                0L,
+                0,
+                0,
+                false,
+                false,
+                true,
+                false,
+                false,
+                true,
+                false,
+                false,
+                true
+        ));
+
+        PairCredentials credentials = pair();
+        HttpResponse list = send(
+                "GET",
+                "/api/files?view=trash",
+                headers("Host", host, "Cookie", credentials.cookie),
+                null);
+        String opaqueId = requireJsonValue(JSON_ID, list.bodyUtf8());
+        assertTrue(list.bodyUtf8().contains("\"canDelete\":true"));
+
+        HttpResponse deleted = postJson(
+                "/api/delete",
+                credentials,
+                "{\"id\":\"" + opaqueId + "\"}");
+
+        assertEquals(200, deleted.status);
+        assertEquals(1, mediaAccess.deleteCalls);
+        assertTrue(mediaAccess.items.isEmpty());
+    }
+
+    @Test
+    public void emptyTrashDeletesEligibleItemsAndKeepsProtectedItems() throws Exception {
+        mediaAccess.items.clear();
+        mediaAccess.items.add(trashItem("delete-me", "可刪除.jpg", false, true));
+        mediaAccess.items.add(trashItem("keep-me", "已保護.jpg", true, false));
+
+        PairCredentials credentials = pair();
+        HttpResponse emptied = send(
+                "POST",
+                "/api/trash/empty",
+                headers(
+                        "Host", host,
+                        "Cookie", credentials.cookie,
+                        "Origin", "http://" + host,
+                        "X-Rokid-CSRF", credentials.csrf,
+                        "Content-Length", "0"),
+                null);
+
+        assertEquals(200, emptied.status);
+        assertTrue(emptied.bodyUtf8().contains("\"deleted\":1"));
+        assertTrue(emptied.bodyUtf8().contains("\"failed\":0"));
+        assertTrue(emptied.bodyUtf8().contains("\"skipped\":1"));
+        assertEquals(1, mediaAccess.deleteCalls);
+        assertEquals(1, mediaAccess.items.size());
+        assertEquals("keep-me", mediaAccess.items.get(0).getRepositoryId());
+    }
+
+    private static MediaItem trashItem(
+            String repositoryId,
+            String displayName,
+            boolean protectedFromTrash,
+            boolean canDeletePermanently
+    ) {
+        return new MediaItem(
+                repositoryId,
+                displayName,
+                "image/jpeg",
+                Kind.PHOTO,
+                FILE_BYTES.length,
+                1_700_000_000_000L,
+                0L,
+                0,
+                0,
+                false,
+                protectedFromTrash,
+                true,
+                false,
+                false,
+                true,
+                false,
+                false,
+                canDeletePermanently
+        );
     }
 
     @Test
@@ -535,6 +647,7 @@ public final class LocalShareServerTest {
         volatile long lastOpenedOffset = -1L;
         volatile int trashCalls;
         volatile int mutationCalls;
+        volatile int deleteCalls;
         volatile MediaAccess.Failure renameFailure;
 
         @Override
@@ -579,6 +692,32 @@ public final class LocalShareServerTest {
                             MediaAccess.Failure.Reason.NOT_FOUND,
                             "檔案不存在"
                     );
+                }
+            }
+        }
+
+        @Override
+        public List<MediaItem> listTrash() {
+            synchronized (items) {
+                List<MediaItem> result = new ArrayList<>();
+                for (MediaItem item : items) {
+                    if (item.isTrashed()) result.add(item);
+                }
+                return result;
+            }
+        }
+
+        @Override
+        public void deletePermanently(String repositoryId) throws IOException {
+            deleteCalls++;
+            mutationCalls++;
+            synchronized (items) {
+                boolean removed = items.removeIf(item ->
+                        repositoryId.equals(item.getRepositoryId()) && item.isTrashed());
+                if (!removed) {
+                    throw new MediaAccess.Failure(
+                            MediaAccess.Failure.Reason.NOT_FOUND,
+                            "垃圾桶項目不存在");
                 }
             }
         }

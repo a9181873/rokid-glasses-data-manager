@@ -17,6 +17,7 @@ public final class MediaItem {
     public static final int CAPABILITY_TRASH = 1 << 3;
     public static final int CAPABILITY_RESTORE = 1 << 4;
     public static final int CAPABILITY_UPLOAD_CHILD = 1 << 5;
+    public static final int CAPABILITY_DELETE_PERMANENTLY = 1 << 6;
 
     public enum Kind {
         DIRECTORY,
@@ -165,7 +166,9 @@ public final class MediaItem {
     MediaItem withUserMetadata(boolean favorite, boolean protectedItem, String duplicateGroup) {
         int effectiveCapabilities = capabilities;
         if (protectedItem) {
-            effectiveCapabilities &= ~(CAPABILITY_RENAME | CAPABILITY_TRASH);
+            effectiveCapabilities &= ~(CAPABILITY_RENAME
+                    | CAPABILITY_TRASH
+                    | CAPABILITY_DELETE_PERMANENTLY);
         }
         return new MediaItem(
                 id,

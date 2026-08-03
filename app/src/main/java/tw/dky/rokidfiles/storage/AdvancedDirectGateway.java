@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -23,6 +24,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -184,6 +186,11 @@ public final class AdvancedDirectGateway implements StorageGateway {
                         StorageOperationResult.Status.INVALID_INPUT,
                         "Only media files can be renamed");
             }
+            if (!sameExtension(source.getName(), newDisplayName.trim())) {
+                return StorageOperationResult.failure(
+                        StorageOperationResult.Status.INVALID_INPUT,
+                        "The original media file extension must be preserved");
+            }
             File target = resolveNewChild(source.getParentFile(), newDisplayName.trim(),
                     reference.trashed);
             if (target.exists()) {
@@ -191,6 +198,7 @@ public final class AdvancedDirectGateway implements StorageGateway {
                         StorageOperationResult.Status.CONFLICT, "A file with that name already exists");
             }
             atomicMove(source.toPath(), target.toPath());
+            notifyMediaScanner(source, target);
             return StorageOperationResult.success(toItem(target, reference.trashed));
         } catch (FileAlreadyExistsException failure) {
             return failure(StorageOperationResult.Status.CONFLICT, failure);
@@ -237,6 +245,7 @@ public final class AdvancedDirectGateway implements StorageGateway {
             }
             atomicMove(source.toPath(), target.toPath());
             moveCompleted = true;
+            notifyMediaScanner(source, target);
             return StorageOperationResult.success(toItem(target, true));
         } catch (FileAlreadyExistsException failure) {
             return failure(StorageOperationResult.Status.CONFLICT, failure);
@@ -291,10 +300,42 @@ public final class AdvancedDirectGateway implements StorageGateway {
             }
             atomicMove(source.toPath(), target.toPath());
             trashMetadata.edit().remove(metadataKey(reference.relativePath)).commit();
+            notifyMediaScanner(source, target);
             return StorageOperationResult.success(toItem(target, false));
         } catch (FileAlreadyExistsException failure) {
             return failure(StorageOperationResult.Status.CONFLICT, failure);
         } catch (FileNotFoundException failure) {
+            return failure(StorageOperationResult.Status.NOT_FOUND, failure);
+        } catch (SecurityException failure) {
+            return failure(StorageOperationResult.Status.PERMISSION_DENIED, failure);
+        } catch (IllegalArgumentException failure) {
+            return failure(StorageOperationResult.Status.INVALID_INPUT, failure);
+        } catch (IOException | RuntimeException failure) {
+            return failure(StorageOperationResult.Status.IO_ERROR, failure);
+        }
+    }
+
+    @Override
+    public StorageOperationResult deletePermanently(String id) {
+        try {
+            ensureAvailable();
+            DirectRef reference = DirectRef.decode(id);
+            if (!reference.trashed) {
+                return StorageOperationResult.failure(
+                        StorageOperationResult.Status.INVALID_INPUT,
+                        "Only items already in trash can be permanently deleted");
+            }
+            File source = resolveExisting(reference.relativePath, true);
+            if (!source.isFile()) {
+                return StorageOperationResult.failure(
+                        StorageOperationResult.Status.INVALID_INPUT,
+                        "Only media files can be permanently deleted");
+            }
+            Files.delete(source.toPath());
+            trashMetadata.edit().remove(metadataKey(reference.relativePath)).commit();
+            notifyMediaScanner(source);
+            return StorageOperationResult.success(null);
+        } catch (FileNotFoundException | NoSuchFileException failure) {
             return failure(StorageOperationResult.Status.NOT_FOUND, failure);
         } catch (SecurityException failure) {
             return failure(StorageOperationResult.Status.PERMISSION_DENIED, failure);
@@ -396,6 +437,7 @@ public final class AdvancedDirectGateway implements StorageGateway {
             }
             atomicPublish(temporary.toPath(), target.toPath());
             temporary = null;
+            notifyMediaScanner(target);
             return StorageOperationResult.success(toItem(target, false));
         } catch (FileAlreadyExistsException failure) {
             return failure(StorageOperationResult.Status.CONFLICT, failure);
@@ -543,6 +585,7 @@ public final class AdvancedDirectGateway implements StorageGateway {
         } else {
             capabilities |= MediaItem.CAPABILITY_THUMBNAIL;
             if (trashed) {
+                capabilities |= MediaItem.CAPABILITY_DELETE_PERMANENTLY;
                 if (trashMetadata.contains(metadataKey(relative))) {
                     capabilities |= MediaItem.CAPABILITY_RESTORE;
                 }
@@ -748,6 +791,28 @@ public final class AdvancedDirectGateway implements StorageGateway {
             return "video/*";
         }
         return mime.toLowerCase(Locale.US);
+    }
+
+    private static boolean sameExtension(String originalName, String requestedName) {
+        int originalDot = originalName.lastIndexOf('.');
+        int requestedDot = requestedName.lastIndexOf('.');
+        if (originalDot <= 0 || requestedDot <= 0) {
+            return false;
+        }
+        return originalName.substring(originalDot).equalsIgnoreCase(
+                requestedName.substring(requestedDot));
+    }
+
+    private void notifyMediaScanner(File... files) {
+        String[] paths = new String[files.length];
+        for (int index = 0; index < files.length; index++) {
+            paths[index] = files[index].getAbsolutePath();
+        }
+        try {
+            MediaScannerConnection.scanFile(context, paths, null, null);
+        } catch (RuntimeException ignored) {
+            // OEM 媒體掃描服務不可用時，實體檔案操作仍已正確完成。
+        }
     }
 
     private static void atomicMove(Path source, Path target) throws IOException {

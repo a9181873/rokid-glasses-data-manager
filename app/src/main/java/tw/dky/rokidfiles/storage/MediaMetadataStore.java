@@ -52,6 +52,27 @@ public final class MediaMetadataStore {
         return editor.commit();
     }
 
+    /** Removes every app-private flag attached to an item that no longer exists. */
+    public synchronized boolean remove(MediaItem item) {
+        String suffix = suffix(item);
+        return preferences.edit()
+                .remove(FAVORITE + suffix)
+                .remove(PROTECTED + suffix)
+                .remove(DUPLICATE + suffix)
+                .commit();
+    }
+
+    /** Invalidates the duplicate snapshot after the underlying media collection changes. */
+    public synchronized boolean clearDuplicateGroups() {
+        SharedPreferences.Editor editor = preferences.edit();
+        for (String key : preferences.getAll().keySet()) {
+            if (key.startsWith(DUPLICATE)) {
+                editor.remove(key);
+            }
+        }
+        return editor.commit();
+    }
+
     /** Replaces the duplicate index in one durable commit after a complete scan. */
     public synchronized boolean replaceDuplicateGroups(Map<MediaItem, String> groups) {
         SharedPreferences.Editor editor = preferences.edit();

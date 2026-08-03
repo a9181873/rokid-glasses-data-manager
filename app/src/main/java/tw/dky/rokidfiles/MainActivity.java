@@ -24,6 +24,7 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -40,6 +41,7 @@ import android.widget.Toast;
 import android.widget.VideoView;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -322,10 +324,19 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        if (gestures != null && gestures.onTouchEvent(event)) {
+        if (gestures != null && isTouchpadNavigationEvent(event)
+                && gestures.onTouchEvent(event)) {
             return true;
         }
         return super.dispatchTouchEvent(event);
+    }
+
+    private boolean isTouchpadNavigationEvent(MotionEvent event) {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
+            return true;
+        }
+        // Rokid 韌體可能把鏡腳觸控板標成 touchscreen；無實體觸控螢幕時保留手勢導覽。
+        return !getPackageManager().hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
     }
 
     @Override
@@ -433,11 +444,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             home.add(actionRow("重複檔案", "充電時建議掃描", this::startDuplicateScan));
             home.add(actionRow("垃圾桶", "還原已移除項目", () -> showMedia(ViewFilter.TRASH)));
             home.add(actionRow("USB 電腦管理", "推薦・本機連線", () -> startShare(false)));
-            home.add(actionRow("Wi‑Fi 手機管理", "限私人熱點／可信網路", () -> startShare(true)));
+            home.add(actionRow("同 Wi‑Fi 手機管理", "請先讓眼鏡連上手機熱點", () -> startShare(true)));
             home.add(actionRow("重新整理", "更新檔案與剩餘空間", this::refreshCatalog));
         }
         showRows(home);
         if (gateway != null && !catalogLoaded) {
+            subtitleView.setText(homeSubtitle() + "  •  背景更新中");
             refreshCatalog();
         }
     }
@@ -460,11 +472,15 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         if (gateway == null) {
             return;
         }
-        runTask("讀取媒體…", task -> {
+        runTask(null, task -> {
             List<MediaItem> items = loadAllMedia(false);
             StorageCapacity measured;
             try {
-                measured = StorageCapacityAnalyzer.analyzeDefault(gateway);
+                measured = StorageCapacityAnalyzer.analyze(
+                        gateway,
+                        8,
+                        10_000,
+                        () -> Thread.currentThread().isInterrupted());
             } catch (IOException failure) {
                 measured = gateway.getCapacitySummary();
             }
@@ -508,6 +524,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             List<MediaItem> result = new ArrayList<>();
             int offset = 0;
             while (result.size() < MAX_MEDIA_ITEMS) {
+                ensureTaskNotInterrupted();
                 MediaPage page = gateway.list(MediaQuery.trash(offset, MediaQuery.MAX_PAGE_SIZE));
                 result.addAll(page.getItems());
                 if (!page.hasMore() || page.getNextOffset() <= offset) {
@@ -526,10 +543,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         pending.add("<root>");
         visited.add("<root>");
         while (!pending.isEmpty() && result.size() < MAX_MEDIA_ITEMS) {
+            ensureTaskNotInterrupted();
             String marker = pending.removeFirst();
             String parentId = "<root>".equals(marker) ? null : marker;
             int offset = 0;
             while (result.size() < MAX_MEDIA_ITEMS) {
+                ensureTaskNotInterrupted();
                 MediaPage page = gateway.list(new MediaQuery(
                         parentId, offset, MediaQuery.MAX_PAGE_SIZE, false));
                 for (MediaItem item : page.getItems()) {
@@ -549,6 +568,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         sortNewest(result);
         return Collections.unmodifiableList(result);
+    }
+
+    private static void ensureTaskNotInterrupted() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedIOException("背景工作已取消");
+        }
     }
 
     private static void sortNewest(List<MediaItem> items) {
@@ -604,6 +629,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         currentMedia = Collections.unmodifiableList(new ArrayList<>(media));
         subtitleView.setText(media.size() + " 個項目" + filterSubtitle(filter));
         List<UiRow> mediaRows = new ArrayList<>();
+        if (filter == ViewFilter.TRASH && !media.isEmpty()) {
+            mediaRows.add(actionRow(
+                    "清空垃圾桶",
+                    "永久刪除可刪除項目，已保護項目會保留",
+                    () -> confirmEmptyTrash(media)));
+        }
         String previousGroup = null;
         for (MediaItem item : media) {
             String group = dateGroup(item.getLastModifiedMillis());
@@ -655,6 +686,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         if (item.isTrashed()) {
             if (item.hasCapability(MediaItem.CAPABILITY_RESTORE)) {
                 actions.add(actionRow("還原", "回到原位置", () -> restore(item)));
+            }
+            if (item.hasCapability(MediaItem.CAPABILITY_DELETE_PERMANENTLY)) {
+                actions.add(actionRow(
+                        "永久刪除",
+                        "無法復原",
+                        () -> confirmPermanentDelete(item)));
             }
         } else {
             if (item.hasCapability(MediaItem.CAPABILITY_RENAME)) {
@@ -824,6 +861,101 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         mutate("還原中…", () -> gateway.restore(item.getId()));
     }
 
+    private void confirmPermanentDelete(MediaItem item) {
+        if (!item.hasCapability(MediaItem.CAPABILITY_DELETE_PERMANENTLY)) {
+            toast("此項目目前無法永久刪除");
+            return;
+        }
+        dismissActiveDialog();
+        activeDialog = new AlertDialog.Builder(this)
+                .setTitle("永久刪除？")
+                .setMessage(item.getDisplayName() + "\n刪除後無法還原。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("繼續", (dialog, which) ->
+                        confirmPermanentDeleteAgain(item))
+                .show();
+    }
+
+    private void confirmPermanentDeleteAgain(MediaItem item) {
+        dismissActiveDialog();
+        activeDialog = new AlertDialog.Builder(this)
+                .setTitle("再次確認")
+                .setMessage("確定永久刪除「" + item.getDisplayName() + "」？")
+                .setNegativeButton("保留", null)
+                .setPositiveButton("永久刪除", (dialog, which) ->
+                        mutate("永久刪除中…", () ->
+                                gateway.deletePermanently(item.getId())))
+                .show();
+    }
+
+    private void confirmEmptyTrash(List<MediaItem> items) {
+        long bytes = 0L;
+        int deletable = 0;
+        for (MediaItem item : items) {
+            if (item.hasCapability(MediaItem.CAPABILITY_DELETE_PERMANENTLY)) {
+                deletable++;
+                if (item.getSizeBytes() > 0L && bytes <= Long.MAX_VALUE - item.getSizeBytes()) {
+                    bytes += item.getSizeBytes();
+                }
+            }
+        }
+        if (deletable == 0) {
+            toast("沒有可永久刪除的項目；請先解除保護");
+            return;
+        }
+        int finalDeletable = deletable;
+        long finalBytes = bytes;
+        dismissActiveDialog();
+        activeDialog = new AlertDialog.Builder(this)
+                .setTitle("清空垃圾桶？")
+                .setMessage("將永久刪除 " + finalDeletable + " 個項目（約 "
+                        + UiFormat.bytes(finalBytes) + "）。已保護項目會保留。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("繼續", (dialog, which) ->
+                        confirmEmptyTrashAgain(items, finalDeletable))
+                .show();
+    }
+
+    private void confirmEmptyTrashAgain(List<MediaItem> items, int deletable) {
+        dismissActiveDialog();
+        activeDialog = new AlertDialog.Builder(this)
+                .setTitle("再次確認")
+                .setMessage("永久刪除 " + deletable + " 個項目，之後無法復原。")
+                .setNegativeButton("保留", null)
+                .setPositiveButton("永久刪除", (dialog, which) -> emptyTrash(items))
+                .show();
+    }
+
+    private void emptyTrash(List<MediaItem> items) {
+        runTask("清空垃圾桶中…", task -> {
+            int deleted = 0;
+            int failed = 0;
+            int skipped = 0;
+            for (MediaItem item : items) {
+                ensureTaskNotInterrupted();
+                if (!item.hasCapability(MediaItem.CAPABILITY_DELETE_PERMANENTLY)) {
+                    skipped++;
+                    continue;
+                }
+                StorageOperationResult result = gateway.deletePermanently(item.getId());
+                if (result.isSuccess()) {
+                    deleted++;
+                } else {
+                    failed++;
+                }
+            }
+            int finalDeleted = deleted;
+            int finalFailed = failed;
+            int finalSkipped = skipped;
+            task.post(() -> {
+                catalogLoaded = false;
+                toast("已刪除 " + finalDeleted + " 個，失敗 " + finalFailed
+                        + " 個，保留 " + finalSkipped + " 個");
+                showMedia(ViewFilter.TRASH);
+            });
+        });
+    }
+
     private interface Mutation {
         StorageOperationResult run();
     }
@@ -833,6 +965,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             StorageOperationResult result = mutation.run();
             task.post(() -> {
                 if (result.isSuccess()) {
+                    catalogLoaded = false;
                     toast("完成");
                     showMedia(currentFilter);
                 } else {
@@ -982,7 +1115,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         renderedShareKey = null;
         mainHandler.removeCallbacks(shareStatusPoll);
         screen = Screen.SHARE;
-        titleView.setText(wifi ? "Wi‑Fi 手機管理" : "USB 電腦管理");
+        titleView.setText(wifi ? "同 Wi‑Fi 手機管理" : "USB 電腦管理");
         subtitleView.setText("正在建立一次性連線…");
         showRows(Collections.singletonList(actionRow(
                 "停止分享", "可隨時中斷所有連線", this::stopShareService)));

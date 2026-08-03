@@ -42,6 +42,7 @@ public final class MediaAccessValueObjectsTest {
         assertFalse(item.canRestore());
         assertFalse(item.canFavorite());
         assertFalse(item.canProtect());
+        assertFalse(item.canDeletePermanently());
     }
 
     @Test
@@ -58,6 +59,7 @@ public final class MediaAccessValueObjectsTest {
         assertFalse(item.canRestore());
         assertTrue(item.canFavorite());
         assertTrue(item.canProtect());
+        assertFalse(item.canDeletePermanently());
     }
 
     @Test

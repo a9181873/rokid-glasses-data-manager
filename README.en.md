@@ -21,7 +21,7 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 - A 480×640 high-contrast black interface for the glasses: swipe to select, tap to activate, and double-tap to go back.
 - Browse by photo, video, or date. Sampled thumbnails avoid loading a full 12 MP image into memory.
 - List, preview, Range-stream, and explicitly download files from a phone or computer browser without synchronizing the originals first.
-- Rename, move to trash, restore, and upload files. The app deliberately provides no permanent-delete action, reducing the risk of an unrecoverable touchpad mistake.
+- Rename, move to trash, restore, and upload multiple files. Trash supports per-file permanent deletion and emptying, both protected by two confirmations while protected items are retained.
 - USB mode listens only on the glasses' local `127.0.0.1:8765` interface and is used with ADB port forwarding.
 - Wi-Fi mode listens only on the current private IPv4 address. Each start creates a new pairing code and 256-bit session token, and the service stops automatically after 10 minutes of inactivity.
 - The display stays awake during phone management and returns to normal sleep behavior when sharing stops or times out. Enter the URL and pairing code shown on the glasses directly in the phone browser.
@@ -105,7 +105,7 @@ adb forward --remove tcp:8765
 ### Direct Wi-Fi management from a phone
 
 1. Connect the glasses to your own phone hotspot, or connect the phone and glasses to the same trusted Wi-Fi network.
-2. On the glasses, open `Wi‑Fi 手機管理` (Wi-Fi phone management).
+2. On the glasses, open `同 Wi‑Fi 手機管理` (same-Wi-Fi phone management).
 3. Enter the `http://private-IP:8765` address shown on the glasses directly in the phone browser, then enter the current pairing code.
 4. Stop sharing immediately when finished.
 

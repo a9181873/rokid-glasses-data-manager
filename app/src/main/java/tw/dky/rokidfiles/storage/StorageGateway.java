@@ -41,6 +41,12 @@ public interface StorageGateway {
 
     StorageOperationResult restore(String id);
 
+    /** Permanently deletes an item that is already in this backend's recoverable trash. */
+    default StorageOperationResult deletePermanently(String id) {
+        return StorageOperationResult.unsupported(
+                "This backend does not support permanent deletion");
+    }
+
     /**
      * Streams an upload into a temporary file/document and publishes it only after EOF. The caller
      * retains ownership of {@code source}. A negative content length means unknown.

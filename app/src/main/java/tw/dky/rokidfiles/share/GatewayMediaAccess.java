@@ -148,6 +148,16 @@ public final class GatewayMediaAccess implements MediaAccess {
     }
 
     @Override
+    public void deletePermanently(String repositoryId) throws IOException {
+        synchronized (mutationLock) {
+            requireCapability(file(repositoryId),
+                    tw.dky.rokidfiles.storage.MediaItem.CAPABILITY_DELETE_PERMANENTLY,
+                    "此項目不支援永久刪除");
+            requireSuccess(gateway.deletePermanently(repositoryId));
+        }
+    }
+
+    @Override
     public MediaAccess.MediaItem setFavorite(String repositoryId, boolean favorite)
             throws IOException {
         ManagedStorageGateway managed = managed();
@@ -303,7 +313,9 @@ public final class GatewayMediaAccess implements MediaAccess {
                 item.hasCapability(tw.dky.rokidfiles.storage.MediaItem.CAPABILITY_TRASH),
                 item.hasCapability(tw.dky.rokidfiles.storage.MediaItem.CAPABILITY_RESTORE),
                 managedMetadata,
-                managedMetadata);
+                managedMetadata,
+                item.hasCapability(
+                        tw.dky.rokidfiles.storage.MediaItem.CAPABILITY_DELETE_PERMANENTLY));
     }
 
     private static void requireCapability(
