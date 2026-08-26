@@ -1,0 +1,3 @@
+Limited large sharing sessions to 10,000 media items without overflowing the server limit.
+Improved uploaded media signature validation when file reads return partial headers.
+Clarified read-only permissions, build requirements, and APK verification in the documentation.

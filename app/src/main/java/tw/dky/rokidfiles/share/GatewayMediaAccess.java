@@ -239,8 +239,11 @@ public final class GatewayMediaAccess implements MediaAccess {
             int offset = 0;
             while (result.size() < MAX_ITEMS) {
                 MediaPage page = gateway.list(MediaQuery.trash(offset, MediaQuery.MAX_PAGE_SIZE));
-                result.addAll(page.getItems());
-                if (!page.hasMore() || page.getNextOffset() <= offset) break;
+                for (tw.dky.rokidfiles.storage.MediaItem item : page.getItems()) {
+                    if (!addIfRoom(result, item, MAX_ITEMS)) break;
+                }
+                if (result.size() >= MAX_ITEMS
+                        || !page.hasMore() || page.getNextOffset() <= offset) break;
                 offset = page.getNextOffset();
             }
             return result;
@@ -259,18 +262,26 @@ public final class GatewayMediaAccess implements MediaAccess {
                 MediaPage page = gateway.list(new MediaQuery(
                         parentId, offset, MediaQuery.MAX_PAGE_SIZE, false));
                 for (tw.dky.rokidfiles.storage.MediaItem item : page.getItems()) {
+                    if (result.size() >= MAX_ITEMS) break;
                     if (item.getKind()
                             == tw.dky.rokidfiles.storage.MediaItem.Kind.DIRECTORY) {
                         if (visited.add(item.getId())) directories.addLast(item.getId());
                     } else {
-                        result.add(item);
+                        if (!addIfRoom(result, item, MAX_ITEMS)) break;
                     }
                 }
-                if (!page.hasMore() || page.getNextOffset() <= offset) break;
+                if (result.size() >= MAX_ITEMS
+                        || !page.hasMore() || page.getNextOffset() <= offset) break;
                 offset = page.getNextOffset();
             }
         }
         return result;
+    }
+
+    static <T> boolean addIfRoom(List<T> target, T item, int limit) {
+        if (target.size() >= limit) return false;
+        target.add(item);
+        return true;
     }
 
     private List<MediaAccess.MediaItem> convert(

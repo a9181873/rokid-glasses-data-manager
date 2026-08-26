@@ -82,9 +82,14 @@ final class StorageSupport {
 
     static boolean hasRecognizedMediaSignature(File file, String mimeType) throws IOException {
         byte[] header = new byte[32];
-        int count;
+        int count = 0;
         try (InputStream input = new FileInputStream(file)) {
-            count = input.read(header);
+            while (count < header.length) {
+                int read = input.read(header, count, header.length - count);
+                if (read < 0) break;
+                if (read == 0) continue;
+                count += read;
+            }
         }
         if (count < 2) return false;
         if (mimeType.startsWith("image/")) {
