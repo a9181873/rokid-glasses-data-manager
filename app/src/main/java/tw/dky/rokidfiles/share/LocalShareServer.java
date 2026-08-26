@@ -313,66 +313,65 @@ public final class LocalShareServer implements Closeable {
         }
         markActivity();
 
-        if ("GET".equals(request.method)) {
-            switch (request.path) {
-                case "/api/files":
-                    handleList(request, response);
-                    return;
-                case "/api/file":
-                    handleFile(request, response);
-                    return;
-                case "/api/thumb":
-                    handleThumbnail(request, response);
-                    return;
-                case "/api/duplicates":
-                    requireNoBody(request);
-                    handleDuplicateList(response);
-                    return;
-                default:
-                    throw new HttpProblem(404, "找不到 API");
+        ShareRoute route = ShareRoute.resolve(request.method, request.path);
+        if (route == null) {
+            if ("GET".equals(request.method) || "POST".equals(request.method)) {
+                throw new HttpProblem(404, "找不到 API");
             }
+            throw new HttpProblem(
+                    405, "不支援此 HTTP 方法", singletonHeader("Allow", "GET, POST"));
         }
 
-        if ("POST".equals(request.method)) {
-            switch (request.path) {
-                case "/api/trash":
-                    handleTrash(request, response);
-                    return;
-                case "/api/restore":
-                    handleRestore(request, response);
-                    return;
-                case "/api/delete":
-                    handleDeletePermanently(request, response);
-                    return;
-                case "/api/trash/empty":
-                    requireNoBody(request);
-                    handleEmptyTrash(response);
-                    return;
-                case "/api/rename":
-                    handleRename(request, response);
-                    return;
-                case "/api/favorite":
-                    handleToggle(request, response, true);
-                    return;
-                case "/api/protected":
-                    handleToggle(request, response, false);
-                    return;
-                case "/api/upload":
-                    handleUpload(request, response);
-                    return;
-                case "/api/duplicates/scan":
-                    requireNoBody(request);
-                    handleDuplicateScan(response);
-                    return;
-                case "/api/remote":
-                    requireNoBody(request);
-                    handleRemote(request, response);
-                    return;
-                default:
-                    throw new HttpProblem(404, "找不到 API");
-            }
+        switch (route) {
+            case FILES:
+                handleList(request, response);
+                return;
+            case FILE:
+                handleFile(request, response);
+                return;
+            case THUMB:
+                handleThumbnail(request, response);
+                return;
+            case DUPLICATES:
+                requireNoBody(request);
+                handleDuplicateList(response);
+                return;
+            case TRASH:
+                handleTrash(request, response);
+                return;
+            case RESTORE:
+                handleRestore(request, response);
+                return;
+            case DELETE:
+                handleDeletePermanently(request, response);
+                return;
+            case EMPTY_TRASH:
+                requireNoBody(request);
+                handleEmptyTrash(response);
+                return;
+            case RENAME:
+                handleRename(request, response);
+                return;
+            case FAVORITE:
+                handleToggle(request, response, true);
+                return;
+            case PROTECTED:
+                handleToggle(request, response, false);
+                return;
+            case UPLOAD:
+                handleUpload(request, response);
+                return;
+            case SCAN_DUPLICATES:
+                requireNoBody(request);
+                handleDuplicateScan(response);
+                return;
+            case REMOTE:
+                requireNoBody(request);
+                handleRemote(request, response);
+                return;
+            default:
+                throw new AssertionError("Unhandled share route: " + route);
         }
-        throw new HttpProblem(405, "不支援此 HTTP 方法", singletonHeader("Allow", "GET, POST"));
     }
 
     private void handlePair(Request request, ResponseWriter response) throws IOException, HttpProblem {

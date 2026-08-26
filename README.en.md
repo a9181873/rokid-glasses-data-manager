@@ -18,10 +18,12 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 
 ## Features
 
-- A 480×640 high-contrast black interface for the glasses: swipe to select, tap to activate, and double-tap to go back.
-- Browse by photo, video, or date. Sampled thumbnails avoid loading a full 12 MP image into memory.
+- A 480×640 high-contrast black interface for the glasses: gentle swipes move one item, fast flings move 2–8, tap activates, and double-tap goes back. Swipe in preview to change to the previous or next item.
+- Browse by photo, video, or date. Sampled thumbnails use a bounded 8 MB LRU cache and never load a full 12 MP image into memory.
 - List, preview, Range-stream, and explicitly download files from a phone or computer browser without synchronizing the originals first.
 - Rename, move to trash, restore, and upload multiple files. Trash supports per-file permanent deletion and emptying, both protected by two confirmations while protected items are retained.
+- Duplicate scanning compares size, a 64 KiB prefix fingerprint, and then full SHA-256, reducing unnecessary reads of large videos.
+- The app keeps only the latest 200 path-redacted diagnostic events in memory; export occurs only when the user explicitly chooses it, and nothing is sent externally.
 - USB mode listens only on the glasses' local `127.0.0.1:8765` interface and is used with ADB port forwarding.
 - Wi-Fi mode listens only on the current private IPv4 address. Each start creates a new pairing code and 256-bit session token, and the service stops automatically after 10 minutes of inactivity.
 - The display stays awake during phone management and returns to normal sleep behavior when sharing stops or times out. Enter the URL and pairing code shown on the glasses directly in the phone browser.
@@ -30,7 +32,7 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 
 ## Storage permission
 
-On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback.
+On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback. On Android 13/API 33 or later, that fallback requests separate photo and video permissions instead of relying on the retired `READ_EXTERNAL_STORAGE`.
 
 ## Confirmed device characteristics
 

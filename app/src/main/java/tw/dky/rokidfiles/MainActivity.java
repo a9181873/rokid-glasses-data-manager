@@ -22,7 +22,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.provider.Settings;
-import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -40,6 +39,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.text.SimpleDateFormat;
@@ -125,7 +125,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     private ListView listView;
     private RowAdapter adapter;
     private ProgressBar progressBar;
-    private GestureDetector gestures;
+    private TouchpadNavigator touchpadNavigator;
     private boolean busy;
 
     private final List<UiRow> rows = new ArrayList<>();
@@ -197,6 +197,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         buildChrome();
         buildGestures();
         ShareService.setMediaAccessProvider(mediaAccessProvider);
+        Diagnostics.info("app 啟動，SDK=" + Build.VERSION.SDK_INT);
         refreshGateway();
         showHome();
     }
@@ -274,7 +275,7 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
         footerView = text(13, COLOR_DIM, Typeface.NORMAL);
         footerView.setGravity(Gravity.CENTER_HORIZONTAL);
-        footerView.setText("滑動選擇  •  點按開啟  •  雙擊返回");
+        footerView.setText("輕滑逐項  •  快滑跳項  •  點按開啟  •  雙擊返回");
         LinearLayout.LayoutParams footerParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         footerParams.topMargin = dp(8);
@@ -283,49 +284,35 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     }
 
     private void buildGestures() {
-        gestures = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+        touchpadNavigator = new TouchpadNavigator(this, new TouchpadNavigator.Callbacks() {
             @Override
-            public boolean onDown(MotionEvent event) {
-                return true;
-            }
-
-            @Override
-            public boolean onSingleTapConfirmed(MotionEvent event) {
+            public void onSingleTap() {
                 activateSelected();
-                return true;
             }
 
             @Override
-            public boolean onDoubleTap(MotionEvent event) {
+            public void onDoubleTap() {
                 navigateBack();
-                return true;
             }
 
             @Override
-            public void onLongPress(MotionEvent event) {
+            public void onLongPress() {
                 if (screen == Screen.MEDIA) {
                     activateSelected();
                 }
             }
 
             @Override
-            public boolean onFling(
-                    MotionEvent first,
-                    MotionEvent second,
-                    float velocityX,
-                    float velocityY) {
-                float primary = Math.abs(velocityX) >= Math.abs(velocityY)
-                        ? velocityX : -velocityY;
-                stepSelection(primary < 0f ? 1 : -1);
-                return true;
+            public void onNavigate(int direction, int steps) {
+                navigateBySteps(direction, steps);
             }
         });
     }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
-        if (gestures != null && isTouchpadNavigationEvent(event)
-                && gestures.onTouchEvent(event)) {
+        if (touchpadNavigator != null && isTouchpadNavigationEvent(event)
+                && touchpadNavigator.onTouchEvent(event)) {
             return true;
         }
         return super.dispatchTouchEvent(event);
@@ -341,14 +328,8 @@ public final class MainActivity extends Activity implements RemoteCommandListene
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_SCROLL) {
-            float horizontal = event.getAxisValue(MotionEvent.AXIS_HSCROLL);
-            float vertical = event.getAxisValue(MotionEvent.AXIS_VSCROLL);
-            float value = Math.abs(horizontal) > Math.abs(vertical) ? horizontal : vertical;
-            if (value != 0f) {
-                stepSelection(value < 0f ? 1 : -1);
-                return true;
-            }
+        if (touchpadNavigator != null && touchpadNavigator.onGenericMotionEvent(event)) {
+            return true;
         }
         return super.dispatchGenericMotionEvent(event);
     }
@@ -358,11 +339,11 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_LEFT:
-                stepSelection(-1);
+                navigateBySteps(-1, 1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                stepSelection(1);
+                navigateBySteps(1, 1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -384,12 +365,10 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         switch (command) {
             case PREVIOUS:
-                if (screen == Screen.PREVIEW) return false;
-                stepSelection(-1);
+                navigateBySteps(-1, 1);
                 return true;
             case NEXT:
-                if (screen == Screen.PREVIEW) return false;
-                stepSelection(1);
+                navigateBySteps(1, 1);
                 return true;
             case OPEN:
                 if (screen == Screen.PREVIEW && activeVideo == null) return false;
@@ -415,6 +394,9 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         gateway = selected;
         gatewayBackend = selectedBackend;
         gatewayExplanation = selection.getExplanation();
+        Diagnostics.info("儲存後端："
+                + (selectedBackend == null ? "無" : selectedBackend.name()) + "（"
+                + gatewayExplanation + "）");
     }
 
     private void showHome() {
@@ -446,6 +428,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             home.add(actionRow("USB 電腦管理", "推薦・本機連線", () -> startShare(false)));
             home.add(actionRow("同 Wi‑Fi 手機管理", "請先讓眼鏡連上手機熱點", () -> startShare(true)));
             home.add(actionRow("重新整理", "更新檔案與剩餘空間", this::refreshCatalog));
+        }
+        if (gateway != null || Diagnostics.size() > 0) {
+            home.add(actionRow(
+                    "匯出診斷記錄",
+                    "最近 " + Diagnostics.size() + " 筆事件，供回報問題",
+                    this::exportDiagnostics));
         }
         showRows(home);
         if (gateway != null && !catalogLoaded) {
@@ -636,7 +624,8 @@ public final class MainActivity extends Activity implements RemoteCommandListene
                     () -> confirmEmptyTrash(media)));
         }
         String previousGroup = null;
-        for (MediaItem item : media) {
+        for (int mediaIndex = 0; mediaIndex < media.size(); mediaIndex++) {
+            MediaItem item = media.get(mediaIndex);
             String group = dateGroup(item.getLastModifiedMillis());
             if (!group.equals(previousGroup)) {
                 mediaRows.add(headerRow(group));
@@ -651,8 +640,12 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             } else if (item.isFavorite()) {
                 detail.append("  •  最愛");
             }
-            mediaRows.add(actionRow(item.getDisplayName(), detail.toString(),
-                    () -> showActions(item)));
+            mediaRows.add(mediaRow(
+                    item.getDisplayName(),
+                    detail.toString(),
+                    () -> showActions(item),
+                    mediaIndex + 1,
+                    media.size()));
         }
         if (mediaRows.isEmpty()) {
             mediaRows.add(actionRow("沒有符合項目", "雙擊返回", this::navigateBack));
@@ -710,11 +703,13 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     private void showPreview(MediaItem item) {
         cancelActiveTask();
         releasePreviewMedia();
+        activeItem = item;
         screen = Screen.PREVIEW;
         titleView.setText(ellipsize(item.getDisplayName(), 24));
+        String position = previewPosition(item);
         subtitleView.setText(item.getKind() == MediaItem.Kind.VIDEO
-                ? "點按播放／暫停  •  雙擊返回"
-                : "縮圖預覽  •  雙擊返回");
+                ? position + "點按播放／暫停  •  滑動換張  •  雙擊返回"
+                : position + "縮圖預覽  •  滑動換張  •  雙擊返回");
         content.removeAllViews();
         if (item.getKind() == MediaItem.Kind.VIDEO) {
             VideoView video = new VideoView(this);
@@ -1012,9 +1007,13 @@ public final class MainActivity extends Activity implements RemoteCommandListene
                         cancelled::get,
                         progress -> postIfTaskCurrent(generation, () -> {
                             if (progress.getPhase() == DuplicateScanner.Phase.HASHING) {
-                                subtitleView.setText("比對 " + progress.getFilesProcessed()
+                                subtitleView.setText("完整比對 " + progress.getFilesProcessed()
                                         + " / " + progress.getCandidateFiles()
                                         + "  •  " + UiFormat.bytes(progress.getBytesProcessed()));
+                            } else if (progress.getPhase()
+                                    == DuplicateScanner.Phase.PREFILTERING) {
+                                subtitleView.setText("快速預篩 " + progress.getFilesProcessed()
+                                        + " / " + progress.getCandidateFiles());
                             } else {
                                 subtitleView.setText("尋找候選檔案 " + progress.getFilesProcessed());
                             }
@@ -1066,14 +1065,25 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     }
 
     private void requestReadPermission() {
-        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
-            refreshGateway();
-            showHome();
-            return;
+        String[] wanted = readMediaPermissions();
+        for (String permission : wanted) {
+            if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(wanted, REQUEST_READ_MEDIA);
+                return;
+            }
         }
-        requestPermissions(
-                new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_READ_MEDIA);
+        refreshGateway();
+        showHome();
+    }
+
+    /** API 33+ 改用細粒度媒體權限；舊版維持 READ_EXTERNAL_STORAGE。 */
+    private static String[] readMediaPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return new String[]{
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_VIDEO};
+        }
+        return new String[]{Manifest.permission.READ_EXTERNAL_STORAGE};
     }
 
     @Override
@@ -1288,17 +1298,69 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
     }
 
-    private void stepSelection(int direction) {
-        if (busy || screen == Screen.PREVIEW) {
+    private void navigateBySteps(int direction, int steps) {
+        if (screen == Screen.PREVIEW) {
+            stepPreview(direction); // 預覽一次只換一張，避免快速甩動跳過欲看的照片。
             return;
         }
-        if (listView == null || rows.isEmpty()) {
+        stepSelection(direction, steps);
+    }
+
+    private void stepPreview(int direction) {
+        if (busy || activeItem == null || currentMedia.isEmpty()) {
             return;
         }
+        int current = mediaIndex(activeItem);
+        if (current < 0) {
+            toast("目前預覽項目已不在清單中");
+            return;
+        }
+        int next = current + (direction < 0 ? -1 : 1);
+        if (next < 0 || next >= currentMedia.size()) {
+            toast(direction < 0 ? "已是第一個項目" : "已是最後一個項目");
+            return;
+        }
+        showPreview(currentMedia.get(next));
+    }
+
+    private String previewPosition(MediaItem item) {
+        int index = mediaIndex(item);
+        return index < 0 ? "" : (index + 1) + " / " + currentMedia.size() + "  •  ";
+    }
+
+    private int mediaIndex(MediaItem target) {
+        for (int index = 0; index < currentMedia.size(); index++) {
+            if (currentMedia.get(index).getId().equals(target.getId())) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private void stepSelection(int direction, int requestedSteps) {
+        if (busy || listView == null || rows.isEmpty()) {
+            return;
+        }
+        int normalizedDirection = direction < 0 ? -1 : 1;
+        int steps = Math.max(1, Math.min(8, requestedSteps));
         int position = listView.getSelectedItemPosition();
         if (position < 0) {
-            position = direction > 0 ? -1 : rows.size();
+            position = normalizedDirection > 0 ? -1 : rows.size();
         }
+        for (int move = 0; move < steps; move++) {
+            int next = nextActionPosition(position, normalizedDirection);
+            if (next < 0) {
+                return;
+            }
+            position = next;
+        }
+        listView.setSelection(position);
+        listView.setItemChecked(position, true);
+        updateSelectionPosition(position);
+    }
+
+    private int nextActionPosition(int start, int direction) {
+        int position = start;
         for (int attempts = 0; attempts < rows.size(); attempts++) {
             position += direction;
             if (position < 0) {
@@ -1307,11 +1369,10 @@ public final class MainActivity extends Activity implements RemoteCommandListene
                 position = 0;
             }
             if (rows.get(position).action != null) {
-                listView.setSelection(position);
-                listView.setItemChecked(position, true);
-                return;
+                return position;
             }
         }
+        return -1;
     }
 
     private int firstActionPosition() {
@@ -1350,6 +1411,18 @@ public final class MainActivity extends Activity implements RemoteCommandListene
             listView.setSelection(first);
             listView.setItemChecked(first, true);
             listView.requestFocus();
+            updateSelectionPosition(first);
+        }
+    }
+
+    private void updateSelectionPosition(int position) {
+        if (screen != Screen.MEDIA || position < 0 || position >= rows.size()) {
+            return;
+        }
+        UiRow selected = rows.get(position);
+        if (selected.ordinal > 0 && selected.total > 0) {
+            subtitleView.setText(selected.ordinal + " / " + selected.total
+                    + "  •  " + selected.total + " 個項目" + filterSubtitle(currentFilter));
         }
     }
 
@@ -1379,8 +1452,10 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         }
         activeTask = ioExecutor.submit(() -> {
             try {
+                Diagnostics.info("任務開始" + (message == null ? "" : "：" + message));
                 task.run(context);
             } catch (Exception failure) {
+                Diagnostics.error("任務失敗：" + Diagnostics.describe(failure));
                 context.post(() -> {
                     hideProgressOverlay();
                     toast("處理失敗：" + safeMessage(failure));
@@ -1457,11 +1532,16 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     }
 
     private UiRow actionRow(String title, String detail, Runnable action) {
-        return new UiRow(title, detail, action, false);
+        return new UiRow(title, detail, action, false, -1, -1);
+    }
+
+    private UiRow mediaRow(
+            String title, String detail, Runnable action, int ordinal, int total) {
+        return new UiRow(title, detail, action, false, ordinal, total);
     }
 
     private UiRow headerRow(String title) {
-        return new UiRow(title, "", null, true);
+        return new UiRow(title, "", null, true, -1, -1);
     }
 
     private final class RowAdapter extends BaseAdapter {
@@ -1518,12 +1598,22 @@ public final class MainActivity extends Activity implements RemoteCommandListene
         final String detail;
         final Runnable action;
         final boolean header;
+        final int ordinal;
+        final int total;
 
-        UiRow(String title, String detail, Runnable action, boolean header) {
+        UiRow(
+                String title,
+                String detail,
+                Runnable action,
+                boolean header,
+                int ordinal,
+                int total) {
             this.title = title;
             this.detail = detail == null ? "" : detail;
             this.action = action;
             this.header = header;
+            this.ordinal = ordinal;
+            this.total = total;
         }
     }
 
@@ -1551,7 +1641,21 @@ public final class MainActivity extends Activity implements RemoteCommandListene
     }
 
     private void toast(String message) {
+        Diagnostics.warn("提示：" + message);
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    /** 把診斷環形緩衝寫入 App 私有目錄，畫面只顯示檔名與大小。 */
+    private void exportDiagnostics() {
+        File external = getExternalFilesDir(null);
+        File target = new File(external != null ? external : getFilesDir(), "diagnostics.txt");
+        try {
+            Diagnostics.exportTo(target);
+            toast("已匯出：" + Diagnostics.safeName(target.getAbsolutePath())
+                    + "（" + UiFormat.bytes(target.length()) + "）");
+        } catch (IOException failure) {
+            toast("匯出失敗：" + safeMessage(failure));
+        }
     }
 
     private static String safeMessage(Throwable failure) {

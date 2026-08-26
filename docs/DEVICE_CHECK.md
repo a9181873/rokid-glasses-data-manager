@@ -47,7 +47,7 @@ adb shell getevent -pl
 adb shell getevent -lt
 ```
 
-逐一測試向前／向後滑、點按、雙擊、長按、返回及 DPAD，並同時確認 App 的選取、開啟與返回反應。若正式版韌體禁止 shell 讀取 `/dev/input`，改執行 `adb shell dumpsys input` 保存裝置／按鍵配置，再以畫面反應逐項記錄結果。App 支援標準 DPAD、Generic Motion 與 Touch MotionEvent；OEM 私有事件若不同，需依實機輸出補映射。
+逐一測試向前／向後輕滑、快速甩動、點按、雙擊、長按、返回及 DPAD，並確認：輕滑只移動一格、快速甩動最多八格、方向不反轉、零碎 Generic Motion 不會暴衝；進入預覽後每次滑動只換一張，標題位置計數同步更新。若正式版韌體禁止 shell 讀取 `/dev/input`，改執行 `adb shell dumpsys input` 保存裝置／按鍵配置，再以畫面反應逐項記錄結果。App 支援標準 DPAD、Generic Motion 與 Touch MotionEvent；OEM 私有事件若不同，需依實機輸出補映射。
 
 ## 4. 分享模式
 

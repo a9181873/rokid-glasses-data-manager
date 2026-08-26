@@ -10,16 +10,25 @@ android {
         applicationId = "tw.dky.rokidfiles"
         minSdk = 28
         targetSdk = 32
-        versionCode = 5
-        versionName = "1.2.0"
+        versionCode = 6
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            // APK 不應內嵌建置機器的本機專案路徑。
+            vcsInfo {
+                include = false
+            }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            vcsInfo {
+                include = false
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

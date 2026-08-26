@@ -16,11 +16,20 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 final class StorageSupport {
     static final int MAX_THUMBNAIL_EDGE = 1024;
     static final int COPY_BUFFER_BYTES = 64 * 1024;
+
+    /** 縮圖 LRU 快取上限；以 RGB_565 計約可容納 15 張 440×560 的 UI 預覽。 */
+    private static final int THUMB_CACHE_MAX_BYTES = 8 * 1024 * 1024;
+    private static final Object THUMB_CACHE_LOCK = new Object();
+    private static final LinkedHashMap<String, CachedThumb> THUMB_CACHE =
+            new LinkedHashMap<>(32, 0.75f, true);
+    private static int thumbCacheBytes = 0;
 
     private StorageSupport() {
     }
@@ -253,6 +262,125 @@ final class StorageSupport {
             return decoded == null ? null : scaleDown(decoded, width, height);
         } catch (OutOfMemoryError failure) {
             throw new IOException("Thumbnail exceeds the available memory", failure);
+        }
+    }
+
+    /**
+     * 以「路徑＋尺寸」為 key 的縮圖 LRU 快取。命中時驗證檔案 mtime 與長度，檔案被改名、
+     * 移動或重新寫入後自動失效。只快取 File 後端；MediaStore 備援不經過此處。
+     * 回傳的是快取母本的副本：呼叫端照舊擁有該 Bitmap，可自行 recycle；
+     * 省下的仍是昂貴的整圖解碼，而非複製成本。
+     */
+    static Bitmap loadFileThumbnailCached(File file, String mimeType, int width, int height)
+            throws IOException {
+        if (!file.isFile()) {
+            return loadFileThumbnail(file, mimeType, width, height);
+        }
+        String key = file.getAbsolutePath() + "|" + width + "x" + height
+                + "|" + (mimeType == null ? "" : mimeType);
+        long stamp = file.lastModified();
+        long length = file.length();
+
+        synchronized (THUMB_CACHE_LOCK) {
+            CachedThumb cached = THUMB_CACHE.get(key); // get 已更新 accessOrder。
+            if (isCurrent(cached, stamp, length)) {
+                Bitmap copy = copyThumb(cached.bitmap);
+                if (copy != null) {
+                    return copy;
+                }
+                removeCacheEntry(key, cached, false);
+                return cached.bitmap; // 無法複製：移交母本所有權。
+            }
+            if (cached != null) {
+                removeCacheEntry(key, cached, true);
+            }
+        }
+
+        Bitmap bitmap = loadFileThumbnail(file, mimeType, width, height);
+        if (bitmap == null) {
+            return null;
+        }
+        if (bitmap.getAllocationByteCount() > THUMB_CACHE_MAX_BYTES) {
+            return bitmap; // 單張異常大於快取上限，不納入快取也不回收。
+        }
+        synchronized (THUMB_CACHE_LOCK) {
+            // HTTP worker 與眼鏡 UI 可能同時解碼同一檔；優先沿用先完成者，避免覆寫漏算。
+            CachedThumb concurrent = THUMB_CACHE.get(key);
+            if (isCurrent(concurrent, stamp, length)) {
+                bitmap.recycle();
+                Bitmap copy = copyThumb(concurrent.bitmap);
+                if (copy != null) {
+                    return copy;
+                }
+                removeCacheEntry(key, concurrent, false);
+                return concurrent.bitmap;
+            }
+            if (concurrent != null) {
+                removeCacheEntry(key, concurrent, true);
+            }
+
+            CachedThumb cached = new CachedThumb(bitmap, stamp, length);
+            THUMB_CACHE.put(key, cached);
+            thumbCacheBytes += bitmap.getAllocationByteCount();
+            trimThumbCacheLocked();
+            CachedThumb retained = THUMB_CACHE.get(key);
+            if (retained != null) {
+                Bitmap copy = copyThumb(retained.bitmap);
+                if (copy != null) {
+                    return copy;
+                }
+                removeCacheEntry(key, retained, false);
+                return retained.bitmap;
+            }
+            // 單張異常大於快取上限時已被 trim 逐出；母本仍由呼叫端接管。
+            return bitmap;
+        }
+    }
+
+    private static boolean isCurrent(CachedThumb cached, long stamp, long length) {
+        return cached != null
+                && !cached.bitmap.isRecycled()
+                && cached.modifiedMillis == stamp
+                && cached.sizeBytes == length;
+    }
+
+    /** 複製失敗回傳 null；由呼叫端決定逐出與所有權移交。 */
+    private static Bitmap copyThumb(Bitmap source) {
+        try {
+            return source.copy(source.getConfig(), false);
+        } catch (OutOfMemoryError failure) {
+            return null;
+        }
+    }
+
+    private static void trimThumbCacheLocked() {
+        while (thumbCacheBytes > THUMB_CACHE_MAX_BYTES && !THUMB_CACHE.isEmpty()) {
+            Map.Entry<String, CachedThumb> oldest = THUMB_CACHE.entrySet().iterator().next();
+            removeCacheEntry(oldest.getKey(), oldest.getValue(), true);
+        }
+    }
+
+    private static void removeCacheEntry(
+            String key, CachedThumb cached, boolean recycleBitmap) {
+        if (!THUMB_CACHE.remove(key, cached)) {
+            return;
+        }
+        thumbCacheBytes = Math.max(
+                0, thumbCacheBytes - cached.bitmap.getAllocationByteCount());
+        if (recycleBitmap && !cached.bitmap.isRecycled()) {
+            cached.bitmap.recycle();
+        }
+    }
+
+    private static final class CachedThumb {
+        final Bitmap bitmap;
+        final long modifiedMillis;
+        final long sizeBytes;
+
+        CachedThumb(Bitmap bitmap, long modifiedMillis, long sizeBytes) {
+            this.bitmap = bitmap;
+            this.modifiedMillis = modifiedMillis;
+            this.sizeBytes = sizeBytes;
         }
     }
 

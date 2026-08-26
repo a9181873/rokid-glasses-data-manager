@@ -161,7 +161,7 @@ public final class AdvancedDirectGateway implements StorageGateway {
         }
         File file = resolveExisting(
                 DirectRef.decode(id).relativePath, DirectRef.decode(id).trashed);
-        return StorageSupport.loadFileThumbnail(
+        return StorageSupport.loadFileThumbnailCached(
                 file, item.getMimeType(), width, height);
     }
 

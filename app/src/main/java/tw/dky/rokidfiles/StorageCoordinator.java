@@ -51,8 +51,7 @@ public final class StorageCoordinator {
             }
         }
 
-        if (app.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (hasMediaReadPermission(app)) {
             MediaStoreGateway gateway = new MediaStoreGateway(app);
             if (gateway.isAvailable()) {
                 return new Selection(
@@ -62,5 +61,17 @@ public final class StorageCoordinator {
         }
 
         return new Selection(null, "尚未允許所有檔案存取");
+    }
+
+    /** API 33+ 使用圖片＋影片細粒度權限；舊版使用 READ_EXTERNAL_STORAGE。 */
+    private static boolean hasMediaReadPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return context.checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES)
+                    == PackageManager.PERMISSION_GRANTED
+                    && context.checkSelfPermission(Manifest.permission.READ_MEDIA_VIDEO)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return context.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED;
     }
 }

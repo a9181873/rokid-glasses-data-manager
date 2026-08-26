@@ -62,7 +62,8 @@ Although the app receives file-manager permission, its implementation manages on
 
 | Action | Function |
 |---|---|
-| Swipe forward/backward | Previous/next item |
+| Gentle swipe forward/backward | Previous/next item, one at a time |
+| Fast fling | Move 2–8 items according to speed; preview still changes only one item |
 | Tap | Open the current item or activate a button |
 | Double-tap | Go back one level |
 | Long-press | Open item actions (if the firmware reserves this gesture for AI, tap through to the action page instead) |
@@ -81,6 +82,9 @@ The home screen provides:
 - USB computer management
 - Wi-Fi phone management
 - Storage permission and capacity information
+- Export diagnostics (written to the app-private directory only when explicitly selected)
+
+When external storage is available, the export overwrites `/sdcard/Android/data/tw.dky.rokidfiles/files/diagnostics.txt`. It contains only the latest 200 redacted events and excludes full paths, PINs, cookies, and session tokens.
 
 ### Protect important files
 

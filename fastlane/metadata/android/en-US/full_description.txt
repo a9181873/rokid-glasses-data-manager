@@ -2,4 +2,4 @@ Rokid Glasses File Manager is a privacy-first file manager designed for the 480Ã
 
 Browse and manage photos and videos on the glasses or through a phone or computer browser. It supports USB and private Wi-Fi access, previews, downloads, uploads, rename, recoverable trash, favorites, protection, and duplicate-file scanning.
 
-No cloud, no account, no advertising, and no tracking. Apache-2.0 licensed open source.
+No cloud, no account, no advertising, and no tracking. MIT-licensed open source.
