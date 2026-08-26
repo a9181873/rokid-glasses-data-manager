@@ -2,7 +2,6 @@ package tw.dky.rokidfiles.storage;
 
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
-import android.net.Uri;
 
 import org.junit.Test;
 
@@ -47,7 +46,7 @@ public final class DuplicateScannerIntegrationTest {
             items.put(id, new MediaItem(
                     id,
                     null,
-                    Uri.EMPTY,
+                    null, // JVM 單元測試的 android.jar stub 讓 Uri.EMPTY 為 null；掃描路徑不讀 uri
                     id + ".jpg",
                     "image/jpeg",
                     MediaItem.Kind.IMAGE,
