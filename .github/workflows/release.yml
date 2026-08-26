@@ -84,8 +84,6 @@ jobs:
             --ks-key-alias "$ANDROID_KEY_ALIAS" \
             --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
             --key-pass env:ANDROID_KEY_PASSWORD \
-            --v1-signing-enabled true \
-            --v2-signing-enabled true \
             --v3-signing-enabled true \
             --out GlassesFiles.apk \
             "$unsigned"

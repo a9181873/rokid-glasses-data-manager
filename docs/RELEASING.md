@@ -15,7 +15,7 @@ The key must match the certificate already used by installed releases. Losing or
 
 ## Release checks
 
-Before publication the workflow runs unit tests, Android lint, and the release build. It then applies APK Signature Schemes v1, v2, and v3, runs `apksigner verify --verbose --print-certs`, and creates the checksum file.
+Before publication the workflow runs unit tests, Android lint, and the release build. Because the app's minimum Android version is API 28, it applies APK Signature Scheme v3, runs `apksigner verify --verbose --print-certs`, and creates the checksum file.
 
 The workflow decodes the key only into the runner's temporary directory and deletes it in an `always()` cleanup step. GitHub-hosted runners are ephemeral.
 

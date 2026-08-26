@@ -10,6 +10,8 @@
 
 **[GlassesFiles.apk をダウンロード](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
 
+現在の最新バージョン：`1.3.1`（`versionCode 7`）。
+
 ダウンロード後、Hi Rokid の Toolbox でインストールできます。Toolbox を使用できない場合は、下記の ADB 手順を使用してください。
 
 緑色モノクロ表示を採用する一般消費者向け **Rokid Glasses RV101／RV102** 専用に設計されています。アプリは眼鏡上で直接動作し、眼鏡本体、スマートフォンのブラウザ、またはパソコンから、眼鏡内の写真と動画を管理できます。アルバム全体をあらかじめスマートフォンへ同期する必要はなく、クラウド、アカウント、広告、アクセス解析サービスも使用しません。
@@ -30,9 +32,18 @@
 - MediaStore の代替動作では、開けない古いデータ行を除外し、実際の相対パスで重複を排除するため、同じ写真が 2 件表示される問題を防ぎます。
 - Web 画面は APK に完全内蔵され、CDN、外部フォント、トラッキングコード、外部 API を読み込みません。
 
+## ドキュメント
+
+- [完全な使用ガイド](docs/USER_GUIDE.ja.md)
+- [実機検証チェックリスト](docs/DEVICE_CHECK.ja.md)
+- [セキュリティノート](SECURITY.ja.md)
+- [プライバシー説明](PRIVACY.ja.md)
+
 ## ストレージ権限
 
 初回起動時に Android の「すべてのファイルへのアクセス」を明示的に許可する必要があります。これにより、ファイルごとに眼鏡上で確認操作を繰り返さなくても、スマートフォンのブラウザからメディアの名前変更、移動、復元を行えます。それでもプログラム内部では、`DCIM/Camera`、`DCIM/album`、`Pictures`、`Movies` などのメディア用ホワイトリストにアクセス先を厳格に制限し、シンボリックリンクと canonical path からの逸脱を拒否します。権限がない場合は、MediaStore による読み取り専用の代替動作だけを提供します。Android 13／API 33 以降では、廃止された `READ_EXTERNAL_STORAGE` ではなく、写真と動画の権限を個別に要求します。
+
+読み取り専用モードでは、閲覧、プレビュー、ダウンロードはできますが、名前変更、ゴミ箱への移動、復元、アップロード、完全削除はできません。1 回の共有セッションで表示できるメディアは最大 10,000 件です。大量のファイルには日付、種類、検索フィルターを使用してください。
 
 ## 確認済みのデバイス条件
 
@@ -49,6 +60,8 @@
 
 通常の利用では上記の APK を使用してください。SDK のインストールは不要です。ソースコードを変更する場合は、次の手順でビルドします。
 
+現在のソースバージョンは `1.3.1`（`versionCode 7`）です。最低 API 28、コンパイル API 35、現在の Rokid YodaOS のサイドロード環境に合わせた target API 32 を使用します。
+
 1. [Android 公式サイトから Android Studio をダウンロードしてインストール](https://developer.android.com/studio)します。Setup Wizard が Android SDK も設定します。
 2. **Tools → SDK Manager** を開き、**Android SDK Platform 35**、**Android SDK Build-Tools**、**Android SDK Platform-Tools** をインストールします。
 3. Android Studio で本プロジェクトのフォルダーを開き、Gradle Sync の完了を待ちます。
@@ -58,18 +71,25 @@
 コマンドラインだけを使用する場合は、[公式ダウンロードページ](https://developer.android.com/studio#command-tools)から Android SDK Command-Line Tools を取得し、JDK 17 も用意してください。環境設定後、プロジェクトのルートで次を実行します。
 
 ```powershell
-.\gradlew.bat :app:assembleDebug
-.\gradlew.bat test
+.\gradlew.bat --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
-macOS／Linux では `gradlew.bat` を `./gradlew` に置き換えてください。
+macOS／Linux：
+
+```bash
+./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+```
+
+単体テストだけを実行する場合は `./gradlew :app:testDebugUnitTest` を使用します。CI では単体テスト、Debug lint、Debug／Release APK のビルドを実行します。
 
 リポジトリに含まれる正式署名済み APK：
 
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256：`47135f76594966634f4d4beda8ed9328c19263e645ccf55ac8b43fc116a54c57`。署名証明書フィンガープリント：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+SHA-256：`fb1175d53f5273989f28bd4fa97da722b5cc81de89a4592133364b99ef2ec3a3`。署名証明書フィンガープリント：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+
+リポジトリのルートから `sha256sum dist/GlassesFiles.apk`（macOS は `shasum -a 256 dist/GlassesFiles.apk`）で確認できます。または `dist/` へ移動して `sha256sum -c GlassesFiles.apk.sha256` を実行してください。
 
 メンテナーのローカル環境にある `private-signing/` には、今後の上書き更新に必須となる秘密署名鍵があります。このフォルダは `.gitignore` で除外され、GitHub へは送信されません。オフラインでバックアップし、公開しないでください。
 

@@ -10,6 +10,8 @@
 
 **[下載 GlassesFiles.apk](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
 
+目前最新版：`1.3.1`（`versionCode 7`）。
+
 下載後可使用 Hi Rokid 的 Toolbox 安裝；若 Toolbox 無法使用，請參考下方的 ADB 安裝方式。
 
 專為綠色單色顯示的消費版 **Rokid Glasses RV101／RV102** 設計。App 直接在眼鏡上執行，讓眼鏡、手機瀏覽器或電腦管理眼鏡內的相片與影片；不需先把整個相簿同步到手機，也沒有雲端、帳號、廣告或分析服務。
@@ -30,9 +32,18 @@
 - MediaStore 備援會排除不可開啟的殘留資料列，並依實際相對路徑去重，避免同一照片顯示兩次。
 - 網頁完全內嵌 APK，不載入 CDN、字型、追蹤碼或外部 API。
 
+## 文件
+
+- [完整使用說明](docs/USER_GUIDE.md)
+- [真機驗收清單](docs/DEVICE_CHECK.md)
+- [安全性說明](SECURITY.md)
+- [隱私權說明](PRIVACY.md)
+
 ## 儲存權限
 
 首次啟動需明確允許 Android 的「所有檔案存取」；這讓手機瀏覽器能在不逐檔回到眼鏡確認的情況下重新命名、移動及復原媒體。程式內仍硬性限制在 `DCIM/Camera`、`DCIM/album`、`Pictures`、`Movies` 等媒體白名單，並拒絕符號連結與 canonical path 逃逸；未授權時只提供 MediaStore 唯讀備援。Android 13／API 33 以上的唯讀備援會分別要求相片與影片權限，不再依賴已淘汰的 `READ_EXTERNAL_STORAGE`。
+
+若只選擇「唯讀瀏覽」，仍可列出、預覽與下載可讀媒體，但不能重新命名、移到垃圾桶、還原、上傳或永久刪除。分享服務的單次清單上限為 10,000 個媒體項目；大量檔案請搭配日期、類型或搜尋篩選。
 
 ## 已確認的裝置條件
 
@@ -49,6 +60,8 @@
 
 一般使用者請直接使用上方的 APK，不需要安裝 SDK。若要修改程式碼，請依下列步驟建置：
 
+目前來源版本為 `1.3.1`（`versionCode 7`），最低支援 Android API 28，使用 API 35 編譯，目標 API 32 以配合目前 Rokid YodaOS 側載環境。
+
 1. 從 [Android 官方網站下載並安裝 Android Studio](https://developer.android.com/studio)。安裝精靈會一併設定 Android SDK。
 2. 開啟 **Tools → SDK Manager**，安裝 **Android SDK Platform 35**、**Android SDK Build-Tools** 與 **Android SDK Platform-Tools**。
 3. 用 Android Studio 開啟本專案資料夾，等待 Gradle Sync 完成。
@@ -58,18 +71,32 @@
 命令列使用者可從[官方下載頁](https://developer.android.com/studio#command-tools)取得 Android SDK Command-Line Tools，並準備 JDK 17。完成環境設定後，在專案根目錄執行：
 
 ```powershell
-.\gradlew.bat :app:assembleDebug
-.\gradlew.bat test
+.\gradlew.bat --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
-macOS／Linux 請將 `gradlew.bat` 改為 `./gradlew`。
+macOS／Linux：
+
+```bash
+./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+```
+
+若只需執行單元測試，可使用 `./gradlew :app:testDebugUnitTest`。CI 會同時執行單元測試、Debug lint、Debug APK 與 Release APK 建置。
 
 儲存庫附帶的正式簽署 APK 位於：
 
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256：`acddd02b00359019bcb97b22bb92b0a8c21c5fe1de234d0eda4d3680fdf8ee32`。簽署憑證指紋：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+SHA-256：`fb1175d53f5273989f28bd4fa97da722b5cc81de89a4592133364b99ef2ec3a3`。簽署憑證指紋：`b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`。
+
+從儲存庫根目錄驗證下載檔：
+
+```bash
+sha256sum dist/GlassesFiles.apk
+# macOS：shasum -a 256 dist/GlassesFiles.apk
+```
+
+或切換到 `dist/` 後執行 `sha256sum -c GlassesFiles.apk.sha256`。
 
 維護者本機的 `private-signing/` 是後續覆蓋更新必須使用的私密簽章金鑰；它已由 `.gitignore` 排除，不會推送到 GitHub。請離線備份且不要公開。
 

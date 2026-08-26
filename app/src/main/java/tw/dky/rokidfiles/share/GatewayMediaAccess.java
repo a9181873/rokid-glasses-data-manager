@@ -278,7 +278,7 @@ public final class GatewayMediaAccess implements MediaAccess {
         return result;
     }
 
-    static <T> boolean addIfRoom(List<T> target, T item, int limit) {
+    private static <T> boolean addIfRoom(List<T> target, T item, int limit) {
         if (target.size() >= limit) return false;
         target.add(item);
         return true;

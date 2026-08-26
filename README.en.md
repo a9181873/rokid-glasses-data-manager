@@ -10,6 +10,8 @@ Regular users do not need the Android SDK or a local build. Download the app tha
 
 **[Download GlassesFiles.apk](https://github.com/a9181873/rokid-glasses-data-manager/raw/refs/heads/main/dist/GlassesFiles.apk)**
 
+Current release: `1.3.1` (`versionCode 7`).
+
 After downloading, install it with Hi Rokid's Toolbox. If Toolbox is unavailable, use the ADB method below.
 
 Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome display. The app runs directly on the glasses and lets you manage the photos and videos stored on them from the glasses, a phone browser, or a computer. There is no need to synchronize the entire gallery to a phone first, and the app has no cloud service, account, advertising, or analytics.
@@ -30,9 +32,18 @@ Designed for the consumer **Rokid Glasses RV101/RV102** with a green monochrome 
 - The MediaStore fallback rejects stale rows that cannot be opened and deduplicates by the real relative path, preventing one photo from appearing twice.
 - The web interface is embedded entirely in the APK. It loads no CDN, font, tracking script, or external API.
 
+## Documentation
+
+- [Full user guide](docs/USER_GUIDE.en.md)
+- [On-device acceptance checklist](docs/DEVICE_CHECK.en.md)
+- [Security notes](SECURITY.en.md)
+- [Privacy notes](PRIVACY.en.md)
+
 ## Storage permission
 
 On first launch, you must explicitly grant Android's “All files access” permission. This lets a phone browser rename, move, and restore media without requiring confirmation on the glasses for every file. The implementation remains hard-limited to an allowlist of media locations such as `DCIM/Camera`, `DCIM/album`, `Pictures`, and `Movies`, and rejects symbolic links and canonical-path escapes. Without this permission, the app provides a read-only MediaStore fallback. On Android 13/API 33 or later, that fallback requests separate photo and video permissions instead of relying on the retired `READ_EXTERNAL_STORAGE`.
+
+Read-only browsing can still list, preview, and download readable media, but cannot rename, move to trash, restore, upload, or permanently delete files. A sharing session lists at most 10,000 media items; use date, type, or search filters for larger libraries.
 
 ## Confirmed device characteristics
 
@@ -49,6 +60,8 @@ Rokid publicly identifies the operating system only as **YodaOS-Sprite**. Detail
 
 Regular users should use the APK above and do not need an SDK. To modify the source code, follow these steps:
 
+The current source version is `1.3.1` (`versionCode 7`), with Android API 28 as the minimum, API 35 for compilation, and API 32 as the target for the current Rokid YodaOS sideload environment.
+
 1. [Download and install Android Studio from the official Android website](https://developer.android.com/studio). Its setup wizard installs the Android SDK.
 2. Open **Tools → SDK Manager** and install **Android SDK Platform 35**, **Android SDK Build-Tools**, and **Android SDK Platform-Tools**.
 3. Open this project directory in Android Studio and wait for Gradle Sync to finish.
@@ -58,18 +71,25 @@ Regular users should use the APK above and do not need an SDK. To modify the sou
 For a command-line-only setup, get the Android SDK Command-Line Tools from the [official download page](https://developer.android.com/studio#command-tools) and install JDK 17. Then run these commands from the project root:
 
 ```powershell
-.\gradlew.bat :app:assembleDebug
-.\gradlew.bat test
+.\gradlew.bat --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
 ```
 
-On macOS/Linux, replace `gradlew.bat` with `./gradlew`.
+On macOS/Linux:
+
+```bash
+./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+```
+
+For unit tests only, run `./gradlew :app:testDebugUnitTest`. CI runs unit tests, Debug lint, and both Debug and Release APK builds.
 
 The repository's release-signed APK is located at:
 
 ```text
 dist/GlassesFiles.apk
 ```
-SHA-256: `47135f76594966634f4d4beda8ed9328c19263e645ccf55ac8b43fc116a54c57`. Signing certificate fingerprint: `b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`.
+SHA-256: `fb1175d53f5273989f28bd4fa97da722b5cc81de89a4592133364b99ef2ec3a3`. Signing certificate fingerprint: `b1052559eb22898762d7867b0d799d631e9743f89b4e69f6b9efc8a29972b729`.
+
+From the repository root, verify the downloaded file with `sha256sum dist/GlassesFiles.apk` (or `shasum -a 256 dist/GlassesFiles.apk` on macOS). Alternatively, change into `dist/` and run `sha256sum -c GlassesFiles.apk.sha256`.
 
 The maintainer's local `private-signing/` directory contains the private key required for future in-place updates. It is excluded by `.gitignore` and is never pushed to GitHub. Keep an offline backup and never publish it.
 
