@@ -47,7 +47,7 @@ adb shell getevent -pl
 adb shell getevent -lt
 ```
 
-Test forward/backward swipes, tap, double-tap, long-press, Back, and DPAD individually while confirming the corresponding selection, open, and back behavior in the app. If a production firmware denies shell access to `/dev/input`, run `adb shell dumpsys input` to save its device and key configuration, then record each gesture's visible app response. The app supports standard DPAD, Generic Motion, and Touch MotionEvent input; an OEM-private event requires a mapping based on the on-device evidence.
+Test gentle forward/backward swipes, fast flings, tap, double-tap, long-press, Back, and DPAD individually. Confirm that a gentle swipe moves one item, a fast fling moves no more than eight, direction never reverses, and fragmented Generic Motion events do not cause a burst. In preview, each swipe must change exactly one item and update the position counter. If production firmware denies shell access to `/dev/input`, run `adb shell dumpsys input` to save its device and key configuration, then record each gesture's visible response. The app supports standard DPAD, Generic Motion, and Touch MotionEvent input; an OEM-private event requires a mapping based on on-device evidence.
 
 ## 4. Sharing modes
 

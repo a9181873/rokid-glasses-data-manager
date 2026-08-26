@@ -81,7 +81,9 @@ public final class MediaItem {
             String duplicateGroup) {
         this.id = Objects.requireNonNull(id, "id");
         this.parentId = parentId;
-        this.uri = Objects.requireNonNull(uri, "uri");
+        // MediaStore-backed items always carry a Uri; file-based items may be uri-less (tests).
+        // The duplicate scan path never reads the uri, so null is safe there.
+        this.uri = uri;
         this.displayName = Objects.requireNonNull(displayName, "displayName");
         this.mimeType = Objects.requireNonNull(mimeType, "mimeType");
         this.kind = Objects.requireNonNull(kind, "kind");

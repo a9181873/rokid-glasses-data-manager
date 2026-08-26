@@ -1,0 +1,3 @@
+Added speed-aware touchpad navigation and swipe-to-change preview.
+Added bounded thumbnail caching and faster duplicate-file prefiltering.
+Added Android 13+ media permissions, opt-in diagnostics export, and signed-release automation.

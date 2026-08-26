@@ -41,6 +41,15 @@ jobs:
           :app:assembleDebug
           :app:assembleRelease
 
+      - name: Verify APK privacy metadata
+        run: >-
+          python3 -c
+          'import glob, zipfile;
+          apks=glob.glob("app/build/outputs/apk/**/*.apk", recursive=True);
+          assert apks, "no APK output";
+          leaked=[p for p in apks if "META-INF/version-control-info.textproto" in zipfile.ZipFile(p).namelist()];
+          assert not leaked, "VCS path metadata found in: " + ", ".join(leaked)'
+
       - name: Upload APKs
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

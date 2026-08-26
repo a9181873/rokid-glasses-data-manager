@@ -13,10 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Cancellable two-pass duplicate detector: size counts first, then streaming SHA-256. */
+/** Cancellable duplicate detector: size → 64 KiB prefix → streaming full SHA-256. */
 public final class DuplicateScanner {
+    /** 前段指紋只讀 64 KiB；不同者不再做昂貴的全檔 SHA-256。 */
+    static final int PREFIX_HASH_BYTES = 64 * 1024;
+
     public enum Phase {
         DISCOVERING,
+        PREFILTERING,
         HASHING,
         COMPLETE
     }
@@ -211,26 +215,30 @@ public final class DuplicateScanner {
             return new Result(true, Collections.emptyList(), discovered[0], 0L, 0L);
         }
 
-        long candidateFiles = 0L;
-        long candidateBytes = 0L;
+        long sizeCandidateFiles = 0L;
+        long sizeCandidatePrefixBytes = 0L;
         for (Map.Entry<Long, Integer> entry : sizeCounts.entrySet()) {
             if (entry.getValue() > 1) {
-                candidateFiles = saturatedAdd(candidateFiles, entry.getValue());
-                candidateBytes = saturatedAdd(
-                        candidateBytes, saturatedMultiply(entry.getKey(), entry.getValue()));
+                sizeCandidateFiles = saturatedAdd(sizeCandidateFiles, entry.getValue());
+                sizeCandidatePrefixBytes = saturatedAdd(
+                        sizeCandidatePrefixBytes,
+                        saturatedMultiply(
+                                Math.min(entry.getKey(), PREFIX_HASH_BYTES), entry.getValue()));
             }
         }
-        final long totalCandidateFiles = candidateFiles;
-        final long totalCandidateBytes = candidateBytes;
+        final long totalSizeCandidateFiles = sizeCandidateFiles;
+        final long totalPrefixBytes = sizeCandidatePrefixBytes;
         progress.onProgress(new Progress(
-                Phase.HASHING, 0L, candidateFiles, 0L, candidateBytes));
+                Phase.PREFILTERING, 0L, sizeCandidateFiles, 0L, sizeCandidatePrefixBytes));
 
-        Map<String, List<MediaItem>> byDigest = new LinkedHashMap<>();
-        long[] hashed = {0L};
+        // 第二次目錄走訪只讀同尺寸候選的前 64 KiB；前段不同者不再讀完整檔案。
+        Map<String, List<MediaItem>> byPrefix = new LinkedHashMap<>();
+        long[] prefixProcessed = {0L};
+        long[] prefixBytesProcessed = {0L};
         long[] skipped = {0L};
-        long[] bytesProcessed = {0L};
-        byte[] buffer = new byte[StorageSupport.COPY_BUFFER_BYTES];
-        MessageDigest digest = sha256();
+        byte[] prefixBuffer = new byte[Math.min(
+                PREFIX_HASH_BYTES, StorageSupport.COPY_BUFFER_BYTES)];
+        MessageDigest prefixDigest = sha256();
         complete = MediaWalker.walk(
                 gateway,
                 options.maxDirectories,
@@ -241,52 +249,112 @@ public final class DuplicateScanner {
                     if (count == null || count < 2) {
                         return;
                     }
-                    digest.reset();
-                    long readTotal = 0L;
-                    long nextProgressBytes = saturatedAdd(
-                            bytesProcessed[0], 4L * 1024L * 1024L);
                     try (InputStream stream = gateway.openInputStream(item.getId())) {
-                        int read;
-                        while ((read = stream.read(buffer)) != -1) {
-                            if (token.isCancelled()) {
-                                return;
-                            }
-                            digest.update(buffer, 0, read);
-                            readTotal += read;
-                            bytesProcessed[0] = saturatedAdd(bytesProcessed[0], read);
-                            if (bytesProcessed[0] >= nextProgressBytes) {
-                                progress.onProgress(new Progress(
-                                        Phase.HASHING,
-                                        hashed[0] + skipped[0],
-                                        totalCandidateFiles,
-                                        bytesProcessed[0],
-                                        totalCandidateBytes));
-                                nextProgressBytes = saturatedAdd(
-                                        bytesProcessed[0], 4L * 1024L * 1024L);
-                            }
-                        }
-                        if (readTotal != size) {
-                            skipped[0]++;
-                            return;
-                        }
-                        String hex = toHex(digest.digest());
-                        byDigest.computeIfAbsent(size + ":" + hex, ignored -> new ArrayList<>())
+                        String prefixHex = hashPrefix(stream, prefixDigest, prefixBuffer);
+                        byPrefix.computeIfAbsent(
+                                        size + ":" + prefixHex, ignored -> new ArrayList<>())
                                 .add(item);
-                        hashed[0]++;
                     } catch (IOException | SecurityException unreadable) {
                         skipped[0]++;
                     }
+                    prefixProcessed[0]++;
+                    prefixBytesProcessed[0] = saturatedAdd(
+                            prefixBytesProcessed[0], Math.min(size, PREFIX_HASH_BYTES));
                     progress.onProgress(new Progress(
-                            Phase.HASHING,
-                            hashed[0] + skipped[0],
-                            totalCandidateFiles,
-                            bytesProcessed[0],
-                            totalCandidateBytes));
+                            Phase.PREFILTERING,
+                            prefixProcessed[0],
+                            totalSizeCandidateFiles,
+                            prefixBytesProcessed[0],
+                            totalPrefixBytes));
                 });
         if (!complete || token.isCancelled()) {
             return new Result(true, Collections.emptyList(),
-                    discovered[0], hashed[0], skipped[0]);
+                    discovered[0], 0L, skipped[0]);
         }
+
+        List<MediaItem> fullCandidates = new ArrayList<>();
+        long fullCandidateBytes = 0L;
+        for (List<MediaItem> candidates : byPrefix.values()) {
+            if (candidates.size() < 2) {
+                continue;
+            }
+            fullCandidates.addAll(candidates);
+            for (MediaItem item : candidates) {
+                fullCandidateBytes = saturatedAdd(fullCandidateBytes, item.getSizeBytes());
+            }
+        }
+        final long totalFullCandidateFiles = fullCandidates.size();
+        final long totalFullCandidateBytes = fullCandidateBytes;
+        progress.onProgress(new Progress(
+                Phase.HASHING, 0L, totalFullCandidateFiles, 0L, totalFullCandidateBytes));
+
+        Map<String, List<MediaItem>> byDigest = new LinkedHashMap<>();
+        long hashed = 0L;
+        long fullSkipped = 0L;
+        long bytesProcessed = 0L;
+        byte[] buffer = new byte[StorageSupport.COPY_BUFFER_BYTES];
+        MessageDigest digest = sha256();
+        for (MediaItem item : fullCandidates) {
+            if (token.isCancelled()) {
+                return new Result(true, Collections.emptyList(),
+                        discovered[0], hashed, saturatedAdd(skipped[0], fullSkipped));
+            }
+            digest.reset();
+            long readTotal = 0L;
+            long nextProgressBytes = saturatedAdd(bytesProcessed, 4L * 1024L * 1024L);
+            try (InputStream stream = gateway.openInputStream(item.getId())) {
+                int read;
+                while ((read = stream.read(buffer)) != -1) {
+                    if (token.isCancelled()) {
+                        return new Result(true, Collections.emptyList(),
+                                discovered[0], hashed,
+                                saturatedAdd(skipped[0], fullSkipped));
+                    }
+                    if (read == 0) {
+                        int single = stream.read();
+                        if (single < 0) {
+                            break;
+                        }
+                        digest.update((byte) single);
+                        readTotal++;
+                        bytesProcessed = saturatedAdd(bytesProcessed, 1L);
+                    } else {
+                        digest.update(buffer, 0, read);
+                        readTotal += read;
+                        bytesProcessed = saturatedAdd(bytesProcessed, read);
+                    }
+                    if (bytesProcessed >= nextProgressBytes) {
+                        progress.onProgress(new Progress(
+                                Phase.HASHING,
+                                hashed + fullSkipped,
+                                totalFullCandidateFiles,
+                                bytesProcessed,
+                                totalFullCandidateBytes));
+                        nextProgressBytes = saturatedAdd(
+                                bytesProcessed, 4L * 1024L * 1024L);
+                    }
+                }
+                if (readTotal != item.getSizeBytes()) {
+                    fullSkipped++;
+                } else {
+                    String hex = toHex(digest.digest());
+                    byDigest.computeIfAbsent(
+                                    item.getSizeBytes() + ":" + hex,
+                                    ignored -> new ArrayList<>())
+                            .add(item);
+                    hashed++;
+                }
+            } catch (IOException | SecurityException unreadable) {
+                fullSkipped++;
+            }
+            progress.onProgress(new Progress(
+                    Phase.HASHING,
+                    hashed + fullSkipped,
+                    totalFullCandidateFiles,
+                    bytesProcessed,
+                    totalFullCandidateBytes));
+        }
+        long totalSkipped = saturatedAdd(skipped[0], fullSkipped);
 
         List<Group> groups = new ArrayList<>();
         Map<MediaItem, String> assignments = new HashMap<>();
@@ -309,9 +377,43 @@ public final class DuplicateScanner {
             metadata.replaceDuplicateGroups(assignments);
         }
         progress.onProgress(new Progress(
-                Phase.COMPLETE, hashed[0] + skipped[0], candidateFiles,
-                bytesProcessed[0], candidateBytes));
-        return new Result(false, groups, discovered[0], hashed[0], skipped[0]);
+                Phase.COMPLETE, hashed + fullSkipped, totalFullCandidateFiles,
+                bytesProcessed, totalFullCandidateBytes));
+        return new Result(false, groups, discovered[0], hashed, totalSkipped);
+    }
+
+    /** Package-private for a deterministic unit test; reads no more than 64 KiB. */
+    static String hashPrefix(InputStream stream) throws IOException {
+        return hashPrefix(
+                stream,
+                sha256(),
+                new byte[Math.min(PREFIX_HASH_BYTES, StorageSupport.COPY_BUFFER_BYTES)]);
+    }
+
+    private static String hashPrefix(
+            InputStream stream,
+            MessageDigest digest,
+            byte[] buffer) throws IOException {
+        digest.reset();
+        int remaining = PREFIX_HASH_BYTES;
+        while (remaining > 0) {
+            int read = stream.read(buffer, 0, Math.min(buffer.length, remaining));
+            if (read < 0) {
+                break;
+            }
+            if (read == 0) {
+                int single = stream.read();
+                if (single < 0) {
+                    break;
+                }
+                digest.update((byte) single);
+                remaining--;
+                continue;
+            }
+            digest.update(buffer, 0, read);
+            remaining -= read;
+        }
+        return toHex(digest.digest());
     }
 
     private static MessageDigest sha256() {

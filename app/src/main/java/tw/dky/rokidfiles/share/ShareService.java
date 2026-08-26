@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import tw.dky.rokidfiles.R;
+import tw.dky.rokidfiles.Diagnostics;
 
 /**
  * 前景分享服務。USB 模式只監聽 127.0.0.1；Wi-Fi 模式只監聽一個 RFC1918 私有 IPv4，
@@ -346,6 +347,7 @@ public final class ShareService extends Service implements LocalShareServer.List
 
     @Override
     public void onFatalServerError(IOException error) {
+        Diagnostics.error("分享伺服器停止：" + Diagnostics.describe(error));
         mainHandler.post(() -> {
             if (server != null) {
                 lastError = "本機分享連線意外停止";
